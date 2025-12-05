@@ -81,14 +81,5 @@ class TerminalConfigService(private val application: Application) {
         )
     }
 
-    /**
-     * Load terminal configuration asynchronously
-     */
-    suspend fun loadConfigAsync(): TerminalConfig {
-        // 使用Dispatchers.IO处理IO密集型任务
-        return withContext(Dispatchers.IO) {
-            // 直接调用loadConfig方法，避免代码重复
-            loadConfig()
-        }
-    }
+
 }

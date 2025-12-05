@@ -1,7 +1,6 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.application.service
 
 import java.util.UUID
-import dev.waylon.terminal.boundedcontexts.terminalsession.domain.InMemoryTerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
@@ -13,10 +12,11 @@ import org.slf4j.LoggerFactory
  * 终端会话服务
  * 负责协调终端会话的生命周期管理
  * 符合DDD最佳实践：服务层只负责协调，不包含业务逻辑
+ * 符合DIP：依赖于抽象，不依赖于具体实现
  */
 class TerminalSessionService(
     private val terminalConfig: TerminalConfig,
-    private val terminalSessionRepository: TerminalSessionRepository = InMemoryTerminalSessionRepository()
+    private val terminalSessionRepository: TerminalSessionRepository
 ) {
     private val log = LoggerFactory.getLogger(TerminalSessionService::class.java)
     private val defaultShellType = terminalConfig.defaultShellType

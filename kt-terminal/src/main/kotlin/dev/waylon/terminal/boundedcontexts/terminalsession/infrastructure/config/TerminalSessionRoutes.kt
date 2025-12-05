@@ -1,6 +1,10 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.config
 
-import dev.waylon.terminal.boundedcontexts.terminalsession.application.service.TerminalSessionService
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.CreateTerminalSessionUseCase
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.GetAllTerminalSessionsUseCase
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.GetTerminalSessionByIdUseCase
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.ResizeTerminalUseCase
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.TerminateTerminalSessionUseCase
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -44,10 +48,17 @@ data class TerminalStatusResponse(
 /**
  * Terminal session routes configuration
  * This follows the same pattern as other route configurations
+ * Route层只负责处理HTTP请求和响应，业务逻辑封装在UseCase中
  */
 fun Application.configureTerminalSessionRoutes() {
     val log = this.log
-    val terminalSessionService by inject<TerminalSessionService>()
+    
+    // 注入UseCase，替代直接注入服务层
+    val createTerminalSessionUseCase by inject<CreateTerminalSessionUseCase>()
+    val getAllTerminalSessionsUseCase by inject<GetAllTerminalSessionsUseCase>()
+    val getTerminalSessionByIdUseCase by inject<GetTerminalSessionByIdUseCase>()
+    val resizeTerminalUseCase by inject<ResizeTerminalUseCase>()
+    val terminateTerminalSessionUseCase by inject<TerminateTerminalSessionUseCase>()
 
     routing {
         // API routes with /api prefix
@@ -64,32 +75,17 @@ fun Application.configureTerminalSessionRoutes() {
                     val title = call.request.queryParameters["title"]
                     val workingDirectory = call.request.queryParameters["workingDirectory"]
                     val shellType = call.request.queryParameters["shellType"]
-
                     val columnsParam = call.request.queryParameters["columns"]
                     val rowsParam = call.request.queryParameters["rows"]
 
-                    log.debug(
-                        "Session creation parameters: userId={}, title={}, workingDirectory={}, shellType={}, columns={}, rows={}",
-                        userId, title, workingDirectory, shellType, columnsParam, rowsParam
-                    )
-
-                    val terminalSize = if (columnsParam != null && rowsParam != null) {
-                        TerminalSize(columnsParam.toInt(), rowsParam.toInt())
-                    } else {
-                        TerminalSize(80, 24)
-                    }
-
-                    val session = terminalSessionService.createSession(
-                        userId,
-                        title,
-                        workingDirectory,
-                        shellType,
-                        terminalSize
-                    )
-
-                    log.info(
-                        "Created new terminal session: {}, shellType: {}, workingDirectory: {}",
-                        session.id, session.shellType, session.workingDirectory
+                    // 使用UseCase执行业务逻辑
+                    val session = createTerminalSessionUseCase.execute(
+                        userId = userId,
+                        title = title,
+                        workingDirectory = workingDirectory,
+                        shellType = shellType,
+                        columns = columnsParam,
+                        rows = rowsParam
                     )
 
                     call.respond(HttpStatusCode.Created, session)
@@ -98,8 +94,10 @@ fun Application.configureTerminalSessionRoutes() {
                 // Get all sessions
                 get {
                     log.debug("Getting all terminal sessions")
-                    val sessions = terminalSessionService.getAllSessions()
-                    log.debug("Found {} terminal sessions", sessions.size)
+                    
+                    // 使用UseCase执行业务逻辑
+                    val sessions = getAllTerminalSessionsUseCase.execute()
+                    
                     call.respond(HttpStatusCode.OK, sessions)
                 }
 
@@ -110,11 +108,13 @@ fun Application.configureTerminalSessionRoutes() {
                         "Invalid session ID"
                     )
                     log.debug("Getting session by ID: {}", id)
-                    val session = terminalSessionService.getSessionById(id) ?: return@get call.respond(
+                    
+                    // 使用UseCase执行业务逻辑
+                    val session = getTerminalSessionByIdUseCase.execute(sessionId = id) ?: return@get call.respond(
                         HttpStatusCode.NotFound,
                         "Session not found"
                     )
-                    log.debug("Found session: {}, status: {}", id, session.status)
+                    
                     call.respond(HttpStatusCode.OK, session)
                 }
 
@@ -134,20 +134,22 @@ fun Application.configureTerminalSessionRoutes() {
                     )
 
                     log.debug("Resizing terminal session {} to columns: {}, rows: {}", id, columns, rows)
-                    val session = terminalSessionService.resizeTerminal(id, columns, rows) ?: return@post call.respond(
+                    
+                    // 使用UseCase执行业务逻辑
+                    val session = resizeTerminalUseCase.execute(sessionId = id, columns = columns, rows = rows) ?: return@post call.respond(
                         HttpStatusCode.NotFound,
                         "Session not found"
                     )
+                    
                     // 使用专门的数据类响应，直接使用TerminalSize对象
                     val response = TerminalResizeResponse(
                         sessionId = session.id,
                         terminalSize = session.terminalSize,
                         status = session.status.toString()
                     )
-                    log.debug("Resized terminal session {} successfully", id)
+                    
                     call.respond(HttpStatusCode.OK, response)
                 }
-
 
                 // Terminate session
                 delete("/{id}") {
@@ -156,7 +158,9 @@ fun Application.configureTerminalSessionRoutes() {
                         "Invalid session ID"
                     )
                     log.debug("Terminating terminal session: {}", id)
-                    val session = terminalSessionService.terminateSession(id) ?: return@delete call.respond(
+                    
+                    // 使用UseCase执行业务逻辑
+                    val session = terminateTerminalSessionUseCase.execute(sessionId = id) ?: return@delete call.respond(
                         HttpStatusCode.NotFound,
                         "Session not found"
                     )
@@ -166,10 +170,9 @@ fun Application.configureTerminalSessionRoutes() {
                         reason = "User terminated",
                         status = session.status.toString()
                     )
-                    log.info("Terminated terminal session: {}", id)
+                    
                     call.respond(HttpStatusCode.OK, response)
                 }
-
             }
         }
     }
