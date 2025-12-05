@@ -34,14 +34,15 @@ A modern, multi-protocol web terminal application with support for real-time com
 **Location**: `clients/web-terminal`
 
 **Technology Stack**:
-- **React 19** - Modern UI framework
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool and dev server
-- **xterm.js** - Terminal emulation
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible UI components
-- **Kotlinx Serialization** - JSON serialization
+- **React 19.2.1** - Modern UI framework
+- **TypeScript 5.9.3** - Type-safe development
+- **Vite 7.2.6** - Fast build tool and dev server
+- **xterm.js 5.5.0** - Terminal emulation
+- **Tailwind CSS 3.4.18** - Utility-first CSS framework
+- **Radix UI** - Accessible UI components (@radix-ui/react-* packages)
 - **WebSocket/WebTransport** - Real-time communication
+- **clsx 2.1.1** - Class name utilities
+- **lucide-react 0.555.0** - Icon library
 
 **Key Features**:
 - Component-based architecture with clean separation of concerns
@@ -57,11 +58,13 @@ A modern, multi-protocol web terminal application with support for real-time com
 **Location**: `kt-terminal`
 
 **Technology Stack**:
-- **Kotlin** - Modern JVM language
-- **Ktor** - Asynchronous web framework
-- **Koin** - Dependency injection
-- **Coroutines** - Asynchronous programming
-- **PTY4J** - Pseudo-terminal implementation
+- **Kotlin 2.2.21** - Modern JVM language
+- **Ktor 3.3.3** - Asynchronous web framework
+- **Koin 4.2.0-alpha3** - Dependency injection
+- **Coroutines** - Asynchronous programming (Kotlin standard library)
+- **PTY4J 0.13.11** - Pseudo-terminal implementation
+- **Logback 1.5.21** - Logging framework
+- **Micrometer 1.16.0** - Metrics collection
 - **DDD Architecture** - Domain-driven design
 - **SOLID Principles** - Clean code design
 
@@ -77,11 +80,16 @@ A modern, multi-protocol web terminal application with support for real-time com
 **Location**: `rs_terminal`
 
 **Technology Stack**:
-- **Rust** - Systems programming language
-- **Tokio** - Asynchronous runtime
-- **async-std** - Async utilities
-- **nix** - Unix system calls
-- **PTY** - Pseudo-terminal implementation
+- **Rust 2024 Edition** - Systems programming language
+- **Tokio 1.48.0** - Asynchronous runtime
+- **Axum 0.8.7** - Web framework
+- **wtransport 0.6.1** - WebTransport implementation
+- **tokio-tungstenite 0.28.0** - WebSocket implementation
+- **portable-pty 0.9.0** - Cross-platform PTY implementation
+- **Serde 1.0.228** - Serialization/deserialization
+- **log4rs 1.3.0** - Logging framework
+- **anyhow 1.0.100** - Error handling
+- **config 0.15.0** - Configuration management
 
 **Key Features**:
 - High-performance terminal processing
@@ -121,52 +129,16 @@ A modern, multi-protocol web terminal application with support for real-time com
 - Multiple backend implementations for different use cases
 - Responsive design for mobile and desktop
 
-## 📁 Project Structure
 
-```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                               Waylon Terminal Project                            │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                   │
-│  ┌───────────────────────────────────────────────────────────────────────────┐     │
-│  │                             Frontend Layer                              │     │
-│  └───────────────────────────────────────────────────────────────────────────┘     │
-│  │  clients/web-terminal/                                                  │     │
-│  │  ├── public/                # Static assets                            │     │
-│  │  ├── src/                   # Source code                               │     │
-│  │  │   ├── components/        # React components                         │     │
-│  │  │   ├── config/            # Application configuration               │     │
-│  │  │   ├── services/          # API and communication services          │     │
-│  │  │   ├── App.tsx            # Main application component              │     │
-│  │  │   └── main.tsx           # Application entry point                 │     │
-│  │  └── package.json           # Dependencies and scripts                │     │
-│  └───────────────────────────────────────────────────────────────────────────┘     │
-│                                                                                   │
-│  ┌───────────────────────────────────────────────────────────────────────────┐     │
-│  │                            Backend Layer                               │     │
-│  └───────────────────────────────────────────────────────────────────────────┘     │
-│  │  kt-terminal/               # Kotlin backend implementation             │     │
-│  │  ├── src/                   # Source code                               │     │
-│  │  │   ├── main/kotlin/        # Kotlin source                            │     │
-│  │  │   └── resources/          # Configuration files                     │     │
-│  │  └── build.gradle.kts        # Gradle build file                       │     │
-│  │                                                                       │     │
-│  │  rs_terminal/                # Rust terminal implementation            │     │
-│  │  ├── src/                   # Source code                               │     │
-│  │  └── Cargo.toml              # Cargo configuration                     │     │
-│  └───────────────────────────────────────────────────────────────────────────┘     │
-│                                                                                   │
-└───────────────────────────────────────────────────────────────────────────────────┘
-```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js 18+** - For frontend development
+- **Node.js 20+** - For frontend development
 - **pnpm** - Package manager for frontend
-- **Java 17+** - For Kotlin backend
-- **Gradle 7.5+** - Build tool for Kotlin backend
-- **Rust 1.70+** - For Rust backend (optional)
+- **Java 21+** - For Kotlin backend
+- **Gradle 8.5+** - Build tool for Kotlin backend
+- **Rust 1.80+** - For Rust backend (optional)
 
 ### Frontend Development
 ```bash
@@ -219,7 +191,7 @@ cargo test
    ```
 
 3. **Open your browser**
-   - Navigate to `http://localhost:5173`
+   - Navigate to `http://localhost:3000`
    - Create a new terminal session
    - Start using the terminal!
 
