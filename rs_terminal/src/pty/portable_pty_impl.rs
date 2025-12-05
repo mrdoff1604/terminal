@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use tracing::{info, error};
+use tracing::{info, error, debug};
 use futures_util::future::FutureExt;
 use std::io::{Read, Write};
 
@@ -119,22 +119,33 @@ impl PortablePty {
 #[async_trait::async_trait]
 impl Pty for PortablePty {
     async fn write(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error + Send>> {
+        info!("Writing {} bytes to PTY", data.len());
         let writer = Arc::clone(&self.writer);
         let data = data.to_vec();
+        let data_len = data.len();
         
         // Spawn the write operation in a blocking thread
         let result = tokio::task::spawn_blocking(move || {
             let mut writer_guard = writer.lock().unwrap();
             // Use standard Write trait write_all method
             match writer_guard.write_all(&data) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send>),
+                Ok(_) => {
+                    info!("Successfully wrote {} bytes to PTY", data_len);
+                    Ok(())
+                },
+                Err(e) => {
+                    error!("Failed to write to PTY: {}", e);
+                    Err(Box::new(e) as Box<dyn std::error::Error + Send>)
+                },
             }
         }).await;
         
         match result {
             Ok(write_result) => write_result,
-            Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to write to PTY: {}", e)))),
+            Err(e) => {
+                error!("Failed to spawn write task: {}", e);
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to write to PTY: {}", e))))
+            },
         }
     }
     
@@ -155,17 +166,22 @@ impl Pty for PortablePty {
             // Task completed within timeout
             Ok(task_result) => {
                 match task_result {
-                    Ok((local_buffer, read_result)) => {
-                        match read_result {
-                            Ok(read_bytes) => {
-                                // Copy the read data to the provided buffer
-                                buffer[..read_bytes].copy_from_slice(&local_buffer[..read_bytes]);
-                                Ok(read_bytes)
-                            },
-                            Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send>),
+                    Ok((local_buffer, Ok(read_bytes))) => {
+                        // Copy the read data to the provided buffer
+                        buffer[..read_bytes].copy_from_slice(&local_buffer[..read_bytes]);
+                        if read_bytes > 0 {
+                            info!("Successfully read {} bytes from PTY", read_bytes);
                         }
+                        Ok(read_bytes)
                     },
-                    Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read from PTY: {}", e)))),
+                    Ok((_, Err(e))) => {
+                        error!("PTY read error: {}", e);
+                        Err(Box::new(e) as Box<dyn std::error::Error + Send>)
+                    },
+                    Err(e) => {
+                        error!("Failed to spawn read task: {}", e);
+                        Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read from PTY: {}", e))))
+                    },
                 }
             },
             // Timeout occurred, return 0 bytes read
