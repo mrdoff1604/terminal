@@ -28,74 +28,34 @@ A modern, multi-protocol web terminal application with support for real-time com
 - **Modern UI** - Clean, intuitive interface built with React
 - **Session management panel** - Easy session switching and management
 
+## 📸 Waylon Terminal Demo
+
+![Waylon Terminal Demo](assets/kt-terminal-demo3.png)
+
 ## 🛠️ Technical Architecture
 
 ### Frontend Implementation
 **Location**: `clients/web-terminal`
 
-**Technology Stack**:
-- **React 19.2.1** - Modern UI framework
-- **TypeScript 5.9.3** - Type-safe development
-- **Vite 7.2.6** - Fast build tool and dev server
-- **xterm.js 5.5.0** - Terminal emulation
-- **Tailwind CSS 3.4.18** - Utility-first CSS framework
-- **Radix UI** - Accessible UI components (@radix-ui/react-* packages)
-- **WebSocket/WebTransport** - Real-time communication
-- **clsx 2.1.1** - Class name utilities
-- **lucide-react 0.555.0** - Icon library
+A modern React-based web client built with TypeScript and xterm.js, providing a seamless terminal experience in the browser.
 
-**Key Features**:
-- Component-based architecture with clean separation of concerns
-- Type-safe API communication
-- Real-time terminal rendering
-- Responsive design with mobile support
-- Session management UI
-- Fullscreen mode
+**Detailed Documentation**: [Web Terminal README](clients/web-terminal/README.md)
 
 ### Backend Implementations
 
 #### Kotlin Implementation (Primary)
 **Location**: `kt-terminal`
 
-**Technology Stack**:
-- **Kotlin 2.2.21** - Modern JVM language
-- **Ktor 3.3.3** - Asynchronous web framework
-- **Koin 4.2.0-alpha3** - Dependency injection
-- **Coroutines** - Asynchronous programming (Kotlin standard library)
-- **PTY4J 0.13.11** - Pseudo-terminal implementation
-- **Logback 1.5.21** - Logging framework
-- **Micrometer 1.16.0** - Metrics collection
-- **DDD Architecture** - Domain-driven design
-- **SOLID Principles** - Clean code design
+A modern terminal server built with Kotlin, following DDD+Kotlin+SOLID principles, with support for WebSocket and WebTransport protocols.
 
-**Key Features**:
-- RESTful API for session management
-- WebSocket and WebTransport support
-- PTY process management
-- Cross-platform terminal support
-- Session timeout management
-- Comprehensive logging
+**Detailed Documentation**: [Kotlin Terminal README](kt-terminal/README.md)
 
 #### Rust Implementation
 **Location**: `rs_terminal`
 
-**Technology Stack**:
-- **Rust 2024 Edition** - Systems programming language
-- **Tokio 1.48.0** - Asynchronous runtime
-- **Axum 0.8.7** - Web framework
-- **wtransport 0.6.1** - WebTransport implementation
-- **tokio-tungstenite 0.28.0** - WebSocket implementation
-- **portable-pty 0.9.0** - Cross-platform PTY implementation
-- **Serde 1.0.228** - Serialization/deserialization
-- **log4rs 1.3.0** - Logging framework
-- **anyhow 1.0.100** - Error handling
-- **config 0.15.0** - Configuration management
+A high-performance terminal server built with Rust, providing low-latency terminal access through WebSocket and WebTransport protocols.
 
-**Key Features**:
-- High-performance terminal processing
-- Low-memory footprint
-- Direct system call access
-- Unix-like systems optimization
+**Detailed Documentation**: [Rust Terminal README](rs_terminal/README.md)
 
 ## 🌟 Technology Highlights
 
