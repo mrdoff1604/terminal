@@ -12,21 +12,18 @@ const API_BASE_URL = `${APP_CONFIG.API_SERVER.URL}${APP_CONFIG.API_SERVER.BASE_P
  */
 export const createSession = async (userId: string, title?: string, workingDirectory?: string, columns?: number, rows?: number): Promise<{ id: string; userId: string; title: string | null; workingDirectory: string; shellType: string; status: string; terminalSize: { columns: number; rows: number }; createdAt: number; updatedAt: number }> => {
   try {
-    const params = new URLSearchParams();
-    params.append('userId', userId);
-    if (title) params.append('title', title);
-    if (workingDirectory) params.append('workingDirectory', workingDirectory);
-    // 添加终端尺寸参数
-    if (columns) params.append('columns', columns.toString());
-    if (rows) params.append('rows', rows.toString());
-    
-    const url = `${API_BASE_URL}?${params.toString()}`;
-    
-    const response = await fetch(url, {
+    const response = await fetch(API_BASE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        userId,
+        title,
+        workingDirectory,
+        columns,
+        rows
+      })
     });
     
     if (!response.ok) {
@@ -52,17 +49,17 @@ export const resizeTerminal = async (
   rows: number
 ): Promise<{ sessionId: string; terminalSize: { columns: number; rows: number }; status: string }> => {
   try {
-    const params = new URLSearchParams();
-    params.append('cols', columns.toString());
-    params.append('rows', rows.toString());
-    
-    const url = `${API_BASE_URL}/${sessionId}/resize?${params.toString()}`;
+    const url = `${API_BASE_URL}/${sessionId}/resize`;
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        columns,
+        rows
+      })
     });
     
     if (!response.ok) {
