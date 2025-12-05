@@ -140,32 +140,36 @@ impl Pty for PortablePty {
     
     async fn read(&mut self, buffer: &mut [u8]) -> Result<usize, Box<dyn std::error::Error + Send>> {
         let reader = Arc::clone(&self.reader);
+        let buffer_len = buffer.len();
         
-        // Create a buffer clone to avoid lifetime issues
-        let buffer_copy = buffer.to_vec();
-        
-        // Spawn the read operation in a blocking thread
-        let result = tokio::task::spawn_blocking(move || {
+        // Spawn the read operation in a blocking thread with a timeout
+        let spawned_task = tokio::task::spawn_blocking(move || {
             let mut reader_guard = reader.lock().unwrap();
-            let mut local_buffer = buffer_copy;
-            match reader_guard.read(&mut local_buffer) {
-                Ok(read_bytes) => {
-                    Ok((local_buffer, read_bytes))
-                },
-                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send>),
-            }
-        }).await;
+            let mut local_buffer = vec![0; buffer_len];
+            let read_result = reader_guard.read(&mut local_buffer);
+            (local_buffer, read_result)
+        });
         
-        match result {
-            Ok(read_result) => match read_result {
-                Ok((local_buffer, read_bytes)) => {
-                    // Copy the read data to the provided buffer
-                    buffer[..read_bytes].copy_from_slice(&local_buffer[..read_bytes]);
-                    Ok(read_bytes)
-                },
-                Err(e) => Err(e),
+        // Use tokio::time::timeout to add a timeout to the read operation
+        match tokio::time::timeout(tokio::time::Duration::from_millis(10), spawned_task).await {
+            // Task completed within timeout
+            Ok(task_result) => {
+                match task_result {
+                    Ok((local_buffer, read_result)) => {
+                        match read_result {
+                            Ok(read_bytes) => {
+                                // Copy the read data to the provided buffer
+                                buffer[..read_bytes].copy_from_slice(&local_buffer[..read_bytes]);
+                                Ok(read_bytes)
+                            },
+                            Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send>),
+                        }
+                    },
+                    Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read from PTY: {}", e)))),
+                }
             },
-            Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read from PTY: {}", e)))),
+            // Timeout occurred, return 0 bytes read
+            Err(_timeout) => Ok(0),
         }
     }
     

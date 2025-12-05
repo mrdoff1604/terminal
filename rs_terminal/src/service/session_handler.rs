@@ -106,11 +106,8 @@ pub async fn handle_terminal_session(
                                 error!("Failed to send PTY output to session {}: {}", conn_id, e);
                                 break;
                             }
-                        } else {
-                            // PTY closed
-                            info!("PTY closed for session {}", conn_id);
-                            break;
                         }
+                        // Don't break when read_bytes is 0 - it might just be a timeout
                     }
                     Err(e) => {
                         error!("Error reading from PTY for session {}: {}", conn_id, e);
