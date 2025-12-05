@@ -24,7 +24,7 @@ val terminalSessionModule = module {
     single<TerminalSessionRepository> { InMemoryTerminalSessionRepository() }
 
     // Service layer
-    single<TerminalSessionService> { TerminalSessionService(get(), get()) }
+    single<TerminalSessionService> { TerminalSessionService(get(), get(), get()) }
 
     // Terminal process manager
     single<TerminalProcessManager> { Pty4jTerminalProcessManager(get()) }

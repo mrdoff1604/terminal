@@ -1,6 +1,7 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.application.service
 
 import java.util.UUID
+import dev.waylon.terminal.boundedcontexts.terminalsession.application.process.TerminalProcessManager
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
@@ -16,7 +17,8 @@ import org.slf4j.LoggerFactory
  */
 class TerminalSessionService(
     private val terminalConfig: TerminalConfig,
-    private val terminalSessionRepository: TerminalSessionRepository
+    private val terminalSessionRepository: TerminalSessionRepository,
+    private val terminalProcessManager: TerminalProcessManager
 ) {
     private val log = LoggerFactory.getLogger(TerminalSessionService::class.java)
     private val defaultShellType = terminalConfig.defaultShellType
@@ -100,6 +102,13 @@ class TerminalSessionService(
      * @return 调整后的终端会话，如果不存在则返回null
      */
     fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
+        val terminalSize = TerminalSize(columns, rows)
+        
+        // 1. 先更新PTY进程的大小
+        val resizeSuccess = terminalProcessManager.resizeProcess(id, terminalSize)
+        log.debug("Resize PTY process result for session {}: {}", id, resizeSuccess)
+        
+        // 2. 然后更新DB中的会话对象
         return terminalSessionRepository.getById(id)?.also {
             it.resize(columns, rows)
             terminalSessionRepository.update(it)

@@ -3,6 +3,7 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.service.TerminalSessionService
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
+import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.dto.CreateSessionRequest
 import org.slf4j.LoggerFactory
 
 /**
@@ -16,41 +17,30 @@ class CreateTerminalSessionUseCase(
 
     /**
      * 执行创建终端会话操作
-     * @param userId 用户ID
-     * @param title 会话标题
-     * @param workingDirectory 工作目录
-     * @param shellType Shell类型
-     * @param columns 终端列数
-     * @param rows 终端行数
+     * @param request 创建会话请求对象
      * @return 创建的终端会话
+     * @throws IllegalArgumentException 如果请求参数无效
      */
-    fun execute(
-        userId: String,
-        title: String?,
-        workingDirectory: String?,
-        shellType: String?,
-        columns: String?,
-        rows: String?
-    ): TerminalSession {
+    fun execute(request: CreateSessionRequest): TerminalSession {
         log.debug("Executing CreateTerminalSessionUseCase")
-        log.debug(
-            "Session creation parameters: userId={}, title={}, workingDirectory={}, shellType={}, columns={}, rows={}",
-            userId, title, workingDirectory, shellType, columns, rows
-        )
+        log.debug("Session creation request: $request")
+
+        // 参数校验
+        validateCreateSessionRequest(request)
 
         // 解析终端尺寸
-        val terminalSize = if (columns != null && rows != null) {
-            TerminalSize(columns.toInt(), rows.toInt())
+        val terminalSize = if (request.columns != null && request.rows != null) {
+            TerminalSize(request.columns, request.rows)
         } else {
             TerminalSize(80, 24) // 默认尺寸
         }
 
         // 调用服务层创建会话
         val session = terminalSessionService.createSession(
-            userId = userId,
-            title = title,
-            shellType = shellType,
-            workingDirectory = workingDirectory,
+            userId = request.userId,
+            title = request.title,
+            shellType = request.shellType,
+            workingDirectory = request.workingDirectory,
             size = terminalSize
         )
 
@@ -60,5 +50,34 @@ class CreateTerminalSessionUseCase(
         )
 
         return session
+    }
+
+    /**
+     * 校验创建会话请求参数
+     * @param request 创建会话请求对象
+     * @throws IllegalArgumentException 如果请求参数无效
+     */
+    private fun validateCreateSessionRequest(request: CreateSessionRequest) {
+        // 校验userId不能为空
+        require(request.userId.isNotBlank()) { "userId cannot be blank" }
+        
+        // 校验终端尺寸（如果提供）必须为正数
+        if (request.columns != null) {
+            require(request.columns > 0) { "columns must be greater than 0" }
+        }
+        
+        if (request.rows != null) {
+            require(request.rows > 0) { "rows must be greater than 0" }
+        }
+        
+        // 校验工作目录（如果提供）不能为空白
+        if (request.workingDirectory != null) {
+            require(request.workingDirectory.isNotBlank()) { "workingDirectory cannot be blank" }
+        }
+        
+        // 校验shell类型（如果提供）不能为空白
+        if (request.shellType != null) {
+            require(request.shellType.isNotBlank()) { "shellType cannot be blank" }
+        }
     }
 }
