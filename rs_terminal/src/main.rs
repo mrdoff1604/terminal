@@ -4,7 +4,9 @@
 mod app_state;
 mod config;
 mod handlers;
+mod protocol;
 mod server;
+mod service;
 
 // Use public API from modules
 use app_state::AppState;
