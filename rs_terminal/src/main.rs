@@ -1,115 +1,31 @@
-use std::net::SocketAddr;
-use std::sync::Arc;
+/// Main entry point for Waylon Terminal Rust backend
 
-use axum::{extract::State, response::IntoResponse, routing::get, Router};
-use axum::extract::ws::{WebSocket, WebSocketUpgrade};
-use axum::extract::ws::Message::{Text, Binary, Ping, Pong, Close};
-use futures_util::StreamExt;
-use tracing::{info, error};
-use tokio::{net::TcpListener, sync::Mutex};
+// Import modules
+mod app_state;
+mod config;
+mod handlers;
+mod server;
 
-#[derive(Clone)]
-struct AppState {
-    sessions: Arc<Mutex<Vec<String>>>,
-}
+// Use public API from modules
+use app_state::AppState;
+use config::init_logging;
+use server::{build_router, run_server, start_webtransport_service};
 
 #[tokio::main]
 async fn main() {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter("rs_terminal=info")
-        .init();
-
+    init_logging();
+    
     // Create application state
-    let app_state = AppState {
-        sessions: Arc::new(Mutex::new(Vec::new())),
-    };
-
-    // Build our application with routes
-    let app = Router::new()
-        .route("/", get(|| async { "Waylon Terminal - Rust Backend" }))
-        .route("/ws", get(websocket_handler))
-        .with_state(app_state);
-
-    // Run our application
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    let listener = TcpListener::bind(addr).await.unwrap();
+    let app_state = AppState::new();
     
-    info!("Server running on http://{}", addr);
-    info!("WebSocket server available at ws://{}/ws", addr);
+    // Start WebTransport service
+    start_webtransport_service(app_state.clone());
     
-    axum::serve(listener, app).await.unwrap();
+    // Build router and run server
+    let app = build_router(app_state);
+    run_server(app).await;
 }
 
-async fn websocket_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let state_clone = state.clone();
-    ws.on_upgrade(|socket| handle_socket(socket, state_clone))
-}
 
-async fn handle_socket(
-    mut socket: WebSocket,
-    state: AppState,
-) {
-    info!("New WebSocket connection");
-    
-    // Add session to state
-    let mut sessions = state.sessions.lock().await;
-    let session_id = format!("session-{}", sessions.len());
-    sessions.push(session_id.clone());
-    drop(sessions);
-    
-    // Send welcome message
-    let welcome_msg = Text(format!("Welcome to Waylon Terminal! Your session ID: {}", session_id));
-    if socket.send(welcome_msg).await.is_err() {
-        info!("Failed to send welcome message");
-        return;
-    }
-    
-    // Handle messages
-    while let Some(msg) = socket.next().await {
-        match msg {
-            Ok(msg) => {
-                match msg {
-                    Text(text) => {
-                        info!("Received message: {}", text);
-                        // Echo back the message
-                        if socket.send(Text(format!("Echo: {}", text))).await.is_err() {
-                            break;
-                        }
-                    }
-                    Binary(_) => {
-                        info!("Received binary message");
-                    }
-                    Ping(_) => {
-                        if socket.send(Pong(Vec::new())).await.is_err() {
-                            break;
-                        }
-                    }
-                    Pong(_) => {
-                        // Do nothing for pong messages
-                    }
-                    Close(_) => {
-                        info!("WebSocket connection closed by client");
-                        break;
-                    }
-                    _ => {
-                        info!("Received unhandled message type");
-                    }
-                }
-            }
-            Err(e) => {
-                error!("WebSocket error: {}", e);
-                break;
-            }
-        }
-    }
-    
-    // Remove session from state
-    let mut sessions = state.sessions.lock().await;
-    sessions.retain(|id| id != &session_id);
-    
-    info!("WebSocket connection closed");
-}
+
