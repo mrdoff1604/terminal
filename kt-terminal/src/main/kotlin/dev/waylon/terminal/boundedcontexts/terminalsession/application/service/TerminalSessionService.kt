@@ -1,8 +1,8 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.application.service
 
-import java.util.UUID
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.process.TerminalProcessManager
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
+import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionFactory
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
@@ -18,12 +18,10 @@ import org.slf4j.LoggerFactory
 class TerminalSessionService(
     private val terminalConfig: TerminalConfig,
     private val terminalSessionRepository: TerminalSessionRepository,
-    private val terminalProcessManager: TerminalProcessManager
+    private val terminalProcessManager: TerminalProcessManager,
+    private val terminalSessionFactory: TerminalSessionFactory
 ) {
     private val log = LoggerFactory.getLogger(TerminalSessionService::class.java)
-    private val defaultShellType = terminalConfig.defaultShellType
-    private val defaultWorkingDirectory = terminalConfig.defaultWorkingDirectory
-    private val sessionTimeoutMs = terminalConfig.sessionTimeoutMs
 
     /**
      * 创建终端会话
@@ -41,25 +39,15 @@ class TerminalSessionService(
         workingDirectory: String?,
         size: TerminalSize?
     ): TerminalSession {
-        val now = System.currentTimeMillis()
-        val actualShellType = shellType ?: defaultShellType
-        val actualShellConfig = terminalConfig.shells[actualShellType]
-        val actualWorkingDirectory =
-            workingDirectory ?: actualShellConfig?.workingDirectory ?: defaultWorkingDirectory
-        val actualTerminalSize = size ?: terminalConfig.defaultTerminalSize
-        val session = TerminalSession(
-            id = UUID.randomUUID().toString(),
+        // 使用工厂创建会话，工厂负责处理参数优先级
+        val session = terminalSessionFactory.createSession(
             userId = userId,
             title = title,
-            workingDirectory = actualWorkingDirectory,
-            shellType = actualShellType,
-            status = TerminalSessionStatus.ACTIVE,
-            terminalSize = actualTerminalSize,
-            createdAt = now,
-            updatedAt = now,
-            lastActiveTime = now,
-            expiredAt = now + sessionTimeoutMs
+            workingDirectory = workingDirectory,
+            shellType = shellType,
+            terminalSize = size
         )
+        
         log.debug("TerminalSession created. {}", session)
         terminalSessionRepository.save(session)
 
@@ -164,7 +152,7 @@ class TerminalSessionService(
 
         // 使用领域模型的方法更新活动时间和过期时间
         session.updateActivity(now)
-        session.updateExpiryTime(sessionTimeoutMs, now)
+        session.updateExpiryTime(terminalConfig.sessionTimeoutMs, now)
 
         // 更新存储中的会话
         terminalSessionRepository.update(session)
