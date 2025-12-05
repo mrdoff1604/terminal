@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::app_state::AppState;
 
@@ -23,7 +23,7 @@ pub async fn start_webtransport_server(
     // This placeholder ensures the server task stays alive
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-        info!("WebTransport server is still running");
+        debug!("WebTransport server is still running");
     }
 }
 
