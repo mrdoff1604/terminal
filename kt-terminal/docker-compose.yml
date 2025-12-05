@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  kt-terminal:
+    build: .
+    container_name: kt-terminal
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      # Add any other environment variables you need here
+    volumes:
+      # Optional: Mount application.conf if you want to modify it without rebuilding
+      # - ./src/main/resources/application.conf:/app/application.conf
+      # Optional: Mount a directory for persistent data (if needed)
+      # - ./data:/app/data
+    restart: unless-stopped
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '512M'
+        reservations:
+          cpus: '0.5'
+          memory: '256M'

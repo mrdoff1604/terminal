@@ -1,0 +1,360 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Modern tech terminal colors */
+  --tech-primary: 217 91% 60%;
+  --tech-secondary: 215 25% 27%;
+  --tech-accent: 142 76% 36%;
+  --tech-danger: 0 84% 60%;
+  --tech-success: 142 76% 36%;
+  --tech-warning: 38 92% 50%;
+  --tech-bg-dark: 222 47% 11%;
+  --tech-bg-darker: 222 47% 8%;
+  --tech-bg-light: 210 40% 98%;
+
+  /* Shadcn/ui colors */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 215 25% 27%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom scrollbar for terminal */
+.terminal-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-track {
+  background: hsl(222 47% 8%);
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(217.2 32.6% 17.5%);
+  border-radius: 4px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(217.2 32.6% 25%);
+}
+
+/* Enhanced glass morphism effect */
+.glass {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.08) 0%, 
+    rgba(255, 255, 255, 0.04) 50%, 
+    rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(8px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* 确保header在正确的层级 */
+  z-index: 10;
+  position: relative;
+}
+
+/* Futuristic glow effects */
+.glow-primary {
+  box-shadow: 0 0 20px hsl(217 91% 60% / 0.3);
+}
+
+.glow-success {
+  box-shadow: 0 0 20px hsl(142 76% 36% / 0.3);
+}
+
+.glow-danger {
+  box-shadow: 0 0 20px hsl(0 84% 60% / 0.3);
+}
+
+/* Animated gradient borders */
+.gradient-border {
+  position: relative;
+  background: linear-gradient(45deg, 
+    hsl(217 91% 60%), 
+    hsl(142 76% 36%), 
+    hsl(217 91% 60%));
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: hsl(222 47% 11%);
+  border-radius: inherit;
+  z-index: -1;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Terminal focus styles */
+.terminal-focus {
+  box-shadow: 0 0 0 2px hsl(217 91% 60% / 0.2);
+}
+
+/* Status indicators */
+.status-connected {
+  background: linear-gradient(45deg, hsl(142 76% 36%), hsl(142 76% 46%));
+  box-shadow: 0 0 10px hsl(142 76% 36% / 0.3);
+}
+
+.status-disconnected {
+  background: linear-gradient(45deg, hsl(0 84% 60%), hsl(0 84% 70%));
+  box-shadow: 0 0 10px hsl(0 84% 60% / 0.3);
+}
+
+/* Tech Grid Background Pattern */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { background-position: -1px -1px; }
+  100% { background-position: -21px -21px; }
+}
+
+/* Enhanced Glass Morphism */
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+}
+
+.backdrop-blur-2xl {
+  backdrop-filter: blur(40px);
+}
+
+/* Enhanced Shadows */
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Enterprise Tech Animations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes data-stream {
+  0% { transform: translateY(-100px) scaleY(0.5); opacity: 0; }
+  20% { opacity: 0.5; }
+  80% { opacity: 0.5; }
+  100% { transform: translateY(100vh) scaleY(1.2); opacity: 0; }
+}
+
+/* Glow shift animation for buttons */
+@keyframes glow-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Data flow animation for terminal borders */
+@keyframes data-flow {
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 0.7; }
+  80% { opacity: 0.7; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes data-flow-reverse {
+  0% { transform: translateX(100%); opacity: 0; }
+  20% { opacity: 0.7; }
+  80% { opacity: 0.7; }
+  100% { transform: translateX(-100%); opacity: 0; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.animate-scan-line {
+  animation: scan-line 8s linear infinite;
+}
+
+.animate-data-stream {
+  animation: data-stream linear infinite;
+}
+
+/* New animation classes */
+.animate-glow-shift {
+  animation: glow-shift 2s ease infinite;
+  background-size: 200% 200%;
+}
+
+.animate-gradientShift {
+  animation: gradientShift 3s ease infinite;
+  background-size: 200% 200%;
+}
+
+.animate-data-flow {
+  animation: data-flow 4s linear infinite;
+  background-size: 200% 200%;
+}
+
+.animate-data-flow-reverse {
+  animation: data-flow-reverse 4s linear infinite;
+  background-size: 200% 200%;
+}
+
+/* Enhanced Corner Radius */
+.rounded-3xl {
+  border-radius: 1.5rem;
+}
+
+.rounded-tl-3xl {
+  border-top-left-radius: 1.5rem;
+}
+
+.rounded-tr-3xl {
+  border-top-right-radius: 1.5rem;
+}
+
+/* xterm.js style overrides */
+.xterm {
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "liga" 0;
+  position: relative;
+  user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+  /* 确保终端内容清晰可读，同时让底层CSS效果能够透出来 */
+  background-color: rgba(30, 30, 30, 0.95); /* 半透明背景，让底层效果可见 */
+  color: #cccccc;
+  /* 确保终端不会遮挡下拉菜单 */
+  z-index: 1;
+}
+
+.xterm.focus,
+.xterm:focus {
+  outline: none;
+}
+
+.xterm .xterm-helpers {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+}
+
+.xterm .xterm-helper-textarea {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  position: absolute;
+  opacity: 0;
+  left: -9999em;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5;
+  white-space: nowrap;
+  overflow: hidden;
+  resize: none;
+}
+
+.xterm .composition-view {
+  background: #000;
+  color: #FFF;
+  display: none;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.xterm .composition-view.active {
+  display: block;
+}
+
+.xterm .xterm-viewport {
+  background-color: #000;
+  overflow-y: hidden !important; /* 隐藏xterm.js滚动条 */
+  cursor: default;
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.xterm .xterm-screen {
+  position: relative;
+}
+
+.xterm .xterm-screen canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.xterm .xterm-scroll-area {
+  visibility: hidden;
+}
+
+.xterm-char-measure-element {
+  display: inline-block;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: -9999em;
+  line-height: normal;
+}
+
+/* 全局滚动条隐藏 */
+html, body {
+  overflow: hidden !important;
+}
+
+/* 隐藏所有滚动条 */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
