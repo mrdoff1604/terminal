@@ -1,11 +1,9 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.service
 
-import io.ktor.server.application.Application
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.ShellConfig
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.TerminalConfig
+import io.ktor.server.application.Application
 
 /**
  * Terminal Configuration Service

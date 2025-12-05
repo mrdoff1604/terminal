@@ -1,10 +1,10 @@
 package dev.waylon.terminal.infrastructure.config
 
+import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.config.terminalSessionModule
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
-import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.config.terminalSessionModule
 
 /**
  * Koin Dependency Injection Configuration
