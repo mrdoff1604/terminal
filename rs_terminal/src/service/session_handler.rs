@@ -1,7 +1,9 @@
 /// Terminal session handler for processing terminal connections
-use tracing::{info, error};
+use tokio::select;
+use tracing::{info, error, debug};
 
 use crate::{app_state::AppState, protocol::TerminalConnection};
+use crate::pty::{Pty, PortablePty};
 
 /// Handle a terminal session using the TerminalConnection trait
 pub async fn handle_terminal_session(
@@ -18,63 +20,129 @@ pub async fn handle_terminal_session(
     sessions.push(conn_id.clone());
     drop(sessions);
     
-    // Send welcome message
-    let welcome_msg = format!("Welcome to Waylon Terminal! Your session ID: {}", conn_id);
-    if let Err(e) = connection.send_text(&welcome_msg).await {
-        error!("Failed to send welcome message to session {}: {}", conn_id, e);
-        return;
-    }
+    // Create PTY for this session
+    let mut pty = match PortablePty::new().await {
+        Ok(pty) => pty,
+        Err(e) => {
+            error!("Failed to create PTY for session {}: {}", conn_id, e);
+            // Send error message and close connection
+            let _ = connection.send_text(&format!("Error: Failed to create terminal session: {}", e)).await;
+            let _ = connection.close().await;
+            // Clean up session
+            let mut sessions = state.sessions.lock().await;
+            sessions.retain(|id| id != &conn_id);
+            drop(sessions);
+            return;
+        }
+    };
     
-    // Handle incoming messages
-    while let Some(msg_result) = connection.receive().await {
-        match msg_result {
-            Ok(msg) => {
-                match msg {
-                    crate::protocol::TerminalMessage::Text(text) => {
-                        info!("Received message: {} from session {}", text, conn_id);
-                        
-                        // Echo back the message
-                        let response = format!("Echo: {}", text);
-                        if let Err(e) = connection.send_text(&response).await {
-                            error!("Failed to send response to session {}: {}", conn_id, e);
-                            break;
+    info!("PTY created for session {}", conn_id);
+    
+    // Create a buffer for reading from PTY
+    let mut pty_buffer = [0u8; 4096];
+    
+    // Main session loop - handle both incoming messages and PTY output
+    let mut is_running = true;
+    
+    while is_running {
+        select! {
+            // Handle incoming messages from the connection
+            msg_result = connection.receive() => {
+                match msg_result {
+                    Some(Ok(msg)) => {
+                        match msg {
+                            crate::protocol::TerminalMessage::Text(text) => {
+                                debug!("Received text message from session {}: {}", conn_id, text);
+                                // Write the text to PTY
+                                if let Err(e) = pty.write(text.as_bytes()).await {
+                                    error!("Failed to write to PTY for session {}: {}", conn_id, e);
+                                    is_running = false;
+                                    break;
+                                }
+                            }
+                            crate::protocol::TerminalMessage::Binary(bin) => {
+                                debug!("Received binary message from session {} of length {}", conn_id, bin.len());
+                                // Write binary data to PTY
+                                if let Err(e) = pty.write(&bin).await {
+                                    error!("Failed to write binary data to PTY for session {}: {}", conn_id, e);
+                                    is_running = false;
+                                    break;
+                                }
+                            }
+                            crate::protocol::TerminalMessage::Ping(_) => {
+                                debug!("Received ping from session {}", conn_id);
+                                // Respond with pong
+                                if let Err(e) = connection.send_text(&"Pong").await {
+                                    error!("Failed to send pong response to session {}: {}", conn_id, e);
+                                    is_running = false;
+                                    break;
+                                }
+                            }
+                            crate::protocol::TerminalMessage::Pong(_) => {
+                                debug!("Received pong from session {}", conn_id);
+                                // Pong received, do nothing
+                            }
+                            crate::protocol::TerminalMessage::Close => {
+                                info!("Received close message from session {}", conn_id);
+                                is_running = false;
+                                break;
+                            }
                         }
                     }
-                    crate::protocol::TerminalMessage::Binary(bin) => {
-                        info!("Received binary message from session {} of length {}", conn_id, bin.len());
-                        // Echo back binary messages
-                        if let Err(e) = connection.send_binary(&bin).await {
-                            error!("Failed to send binary response to session {}: {}", conn_id, e);
-                            break;
-                        }
+                    Some(Err(e)) => {
+                        error!("Connection error for session {}: {}", conn_id, e);
+                        is_running = false;
+                        break;
                     }
-                    crate::protocol::TerminalMessage::Ping(_ping) => {
-                        info!("Received ping from session {}", conn_id);
-                        // Echo back ping as pong
-                        if let Err(e) = connection.send_text(&format!("Pong received")).await {
-                            error!("Failed to send pong response to session {}: {}", conn_id, e);
-                            break;
-                        }
-                    }
-                    crate::protocol::TerminalMessage::Pong(_) => {
-                        info!("Received pong from session {}", conn_id);
-                    }
-                    crate::protocol::TerminalMessage::Close => {
-                        info!("Received close message from session {}", conn_id);
+                    None => {
+                        // Connection closed
+                        info!("Connection closed by client for session {}", conn_id);
+                        is_running = false;
                         break;
                     }
                 }
-            }
-            Err(e) => {
-                error!("Connection error for session {}: {}", conn_id, e);
-                break;
-            }
+            },
+            // Handle PTY output
+            read_result = pty.read(&mut pty_buffer) => {
+                match read_result {
+                    Ok(read_bytes) => {
+                        if read_bytes > 0 {
+                            debug!("Read {} bytes from PTY for session {}", read_bytes, conn_id);
+                            // Send the PTY output back to the connection
+                            let output = &pty_buffer[..read_bytes];
+                            if let Err(e) = connection.send_binary(output).await {
+                                error!("Failed to send PTY output to session {}: {}", conn_id, e);
+                                is_running = false;
+                                break;
+                            }
+                        } else {
+                            // PTY closed
+                            info!("PTY closed for session {}", conn_id);
+                            is_running = false;
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error reading from PTY for session {}: {}", conn_id, e);
+                        is_running = false;
+                        break;
+                    }
+                }
+            },
         }
     }
+    
+    // Clean up resources
+    info!("Cleaning up session {}", conn_id);
     
     // Close the connection
     if let Err(e) = connection.close().await {
         error!("Failed to close connection for session {}: {}", conn_id, e);
+    }
+    
+    // Kill the PTY process
+    if let Err(e) = pty.kill().await {
+        error!("Failed to kill PTY process for session {}: {}", conn_id, e);
     }
     
     // Remove session from state

@@ -5,6 +5,7 @@ mod app_state;
 mod config;
 mod handlers;
 mod protocol;
+mod pty;
 mod server;
 mod service;
 
