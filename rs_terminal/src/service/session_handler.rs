@@ -3,7 +3,7 @@ use tokio::select;
 use tracing::{info, error, debug};
 
 use crate::{app_state::AppState, protocol::TerminalConnection};
-use crate::pty::{Pty, PortablePty};
+use crate::pty::Pty;
 
 /// Handle a terminal session using the TerminalConnection trait
 pub async fn handle_terminal_session(
@@ -20,8 +20,8 @@ pub async fn handle_terminal_session(
     sessions.push(conn_id.clone());
     drop(sessions);
     
-    // Create PTY for this session
-    let mut pty = match PortablePty::new().await {
+    // Create PTY for this session using factory function
+    let mut pty = match crate::pty::create_pty().await {
         Ok(pty) => pty,
         Err(e) => {
             error!("Failed to create PTY for session {}: {}", conn_id, e);
@@ -42,9 +42,7 @@ pub async fn handle_terminal_session(
     let mut pty_buffer = [0u8; 4096];
     
     // Main session loop - handle both incoming messages and PTY output
-    let mut is_running = true;
-    
-    while is_running {
+    loop {
         select! {
             // Handle incoming messages from the connection
             msg_result = connection.receive() => {
@@ -56,7 +54,6 @@ pub async fn handle_terminal_session(
                                 // Write the text to PTY
                                 if let Err(e) = pty.write(text.as_bytes()).await {
                                     error!("Failed to write to PTY for session {}: {}", conn_id, e);
-                                    is_running = false;
                                     break;
                                 }
                             }
@@ -65,7 +62,6 @@ pub async fn handle_terminal_session(
                                 // Write binary data to PTY
                                 if let Err(e) = pty.write(&bin).await {
                                     error!("Failed to write binary data to PTY for session {}: {}", conn_id, e);
-                                    is_running = false;
                                     break;
                                 }
                             }
@@ -74,7 +70,6 @@ pub async fn handle_terminal_session(
                                 // Respond with pong
                                 if let Err(e) = connection.send_text(&"Pong").await {
                                     error!("Failed to send pong response to session {}: {}", conn_id, e);
-                                    is_running = false;
                                     break;
                                 }
                             }
@@ -84,20 +79,17 @@ pub async fn handle_terminal_session(
                             }
                             crate::protocol::TerminalMessage::Close => {
                                 info!("Received close message from session {}", conn_id);
-                                is_running = false;
                                 break;
                             }
                         }
                     }
                     Some(Err(e)) => {
                         error!("Connection error for session {}: {}", conn_id, e);
-                        is_running = false;
                         break;
                     }
                     None => {
                         // Connection closed
                         info!("Connection closed by client for session {}", conn_id);
-                        is_running = false;
                         break;
                     }
                 }
@@ -112,19 +104,16 @@ pub async fn handle_terminal_session(
                             let output = &pty_buffer[..read_bytes];
                             if let Err(e) = connection.send_binary(output).await {
                                 error!("Failed to send PTY output to session {}: {}", conn_id, e);
-                                is_running = false;
                                 break;
                             }
                         } else {
                             // PTY closed
                             info!("PTY closed for session {}", conn_id);
-                            is_running = false;
                             break;
                         }
                     }
                     Err(e) => {
                         error!("Error reading from PTY for session {}: {}", conn_id, e);
-                        is_running = false;
                         break;
                     }
                 }
