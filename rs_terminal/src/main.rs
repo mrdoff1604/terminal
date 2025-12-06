@@ -10,7 +10,7 @@ mod service;
 
 // Use public API from modules
 use app_state::AppState;
-use config::init_logging;
+use config::{init_logging, ConfigLoader};
 use server::{build_router, run_server, start_webtransport_service};
 
 #[tokio::main]
@@ -18,8 +18,12 @@ async fn main() {
     // Initialize logging
     init_logging();
 
-    // Create application state
-    let app_state = AppState::new();
+    // Load configuration
+    let config_loader = ConfigLoader::new();
+    let config = config_loader.load_config(None); // Use None for default path
+
+    // Create application state with configuration
+    let app_state = AppState::new(config);
 
     // Start WebTransport service
     start_webtransport_service(app_state.clone());

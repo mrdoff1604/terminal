@@ -24,8 +24,8 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     // Add session to state
     session_manager.add_session(&conn_id).await;
 
-    // Create PTY for this session
-    let mut pty = match pty_manager.create_pty().await {
+    // Create PTY for this session using application configuration
+    let mut pty = match pty_manager.create_pty_from_config(&state.config).await {
         Ok(pty) => pty,
         Err(e) => {
             // Send error message and close connection
