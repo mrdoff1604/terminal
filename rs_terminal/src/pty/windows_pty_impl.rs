@@ -11,6 +11,7 @@ use std::sync::mpsc::{self, Sender, Receiver, TryRecvError};
 use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::Duration;
+use tracing::{error, info};
 
 /// Windows 专用的异步 PTY 包装
 pub struct WindowsPty {
@@ -299,8 +300,18 @@ impl Default for WindowsPtyFactory {
 #[async_trait::async_trait]
 impl PtyFactory for WindowsPtyFactory {
     async fn create(&self, config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
-        let pty = WindowsPty::new(config)?;
-        Ok(Box::new(pty))
+        info!("WindowsPtyFactory: Creating Windows PTY with command: {:?}, args: {:?}", config.command, config.args);
+        
+        match WindowsPty::new(config) {
+            Ok(pty) => {
+                info!("WindowsPtyFactory: Successfully created Windows PTY");
+                Ok(Box::new(pty))
+            },
+            Err(e) => {
+                error!("WindowsPtyFactory: Failed to create Windows PTY: {}", e);
+                Err(e)
+            }
+        }
     }
     
     fn name(&self) -> &'static str {

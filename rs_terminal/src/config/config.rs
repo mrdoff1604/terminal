@@ -50,33 +50,61 @@ pub struct ShellConfig {
 /// Default configuration values
 impl Default for TerminalConfig {
     fn default() -> Self {
+        // 根据平台选择默认shell类型
+        let default_shell_type = if cfg!(windows) {
+            "cmd".to_string()
+        } else {
+            "bash".to_string()
+        };
+
+        let mut shells = std::collections::HashMap::new();
+        
+        // 添加bash配置（适用于Unix/Linux系统）
+        shells.insert("bash".to_string(), ShellConfig {
+            command: vec!["bash".to_string(), "-l".to_string()],
+            working_directory: None,
+            size: None,
+            environment: {
+                let mut env = std::collections::HashMap::new();
+                env.insert("TERM".to_string(), "xterm-256color".to_string());
+                env.insert("PATH".to_string(), "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string());
+                env
+            },
+        });
+
+        // 添加cmd配置（适用于Windows系统）
+        shells.insert("cmd".to_string(), ShellConfig {
+            command: vec!["cmd.exe".to_string(), "/c".to_string(), "cmd".to_string()],
+            working_directory: None,
+            size: None,
+            environment: {
+                let mut env = std::collections::HashMap::new();
+                env.insert("TERM".to_string(), "xterm-256color".to_string());
+                env
+            },
+        });
+
+        // 添加powershell配置（适用于Windows系统）
+        shells.insert("powershell".to_string(), ShellConfig {
+            command: vec!["powershell.exe".to_string()],
+            working_directory: None,
+            size: None,
+            environment: {
+                let mut env = std::collections::HashMap::new();
+                env.insert("TERM".to_string(), "xterm-256color".to_string());
+                env
+            },
+        });
+        
         Self {
-            default_shell_type: "bash".to_string(),
+            default_shell_type,
             default_size: TerminalSize {
                 columns: 80,
                 rows: 24,
             },
             default_working_directory: PathBuf::from("."),
             session_timeout: 1800000, // 30 minutes
-            shells: {
-                let mut shells = std::collections::HashMap::new();
-                
-                // Bash configuration
-                shells.insert("bash".to_string(), ShellConfig {
-                    command: vec!["bash".to_string(), "-l".to_string()],
-                    working_directory: None,
-                    size: None,
-                    environment: {
-                        let mut env = std::collections::HashMap::new();
-                        env.insert("TERM".to_string(), "xterm-256color".to_string());
-                        env.insert("PATH".to_string(), "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string());
-                        env
-                    },
-                });
-                
-                // Add other shells as needed
-                shells
-            },
+            shells,
         }
     }
 }

@@ -19,7 +19,7 @@ pub async fn start_webtransport_server(addr: SocketAddr, _state: AppState) {
     // The actual connection handling will be implemented with the correct wtransport API
     // This placeholder ensures the server task stays alive
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(600)).await;
         debug!("WebTransport server is still running");
     }
 }

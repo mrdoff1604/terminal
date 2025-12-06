@@ -102,7 +102,8 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
         let factory = WindowsPtyFactory::default();
         match factory.create(&pty_config).await {
             Ok(pty) => Ok(pty),
-            Err(_) => {
+            Err(e) => {
+                tracing::info!("Falling back to MemoryPty because WindowsPty failed: {}", e);
                 let factory = MemoryPtyFactory::default();
                 let pty = factory.create(&pty_config).await?;
                 Ok(pty)
