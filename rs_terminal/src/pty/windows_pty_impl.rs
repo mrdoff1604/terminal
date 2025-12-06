@@ -49,7 +49,7 @@ impl WindowsPty {
             cmd.arg(arg);
         }
 
-        // 设置环境变量
+        // 首先应用配置文件中的环境变量
         for (key, value) in &config.env {
             cmd.env(key, value);
         }
