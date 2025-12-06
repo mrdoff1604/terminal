@@ -69,8 +69,8 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
                         }
                         info!("Read task: Successfully sent data to channel");
                     } else {
-                        // No data read, sleep briefly to avoid CPU spin
-                        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                        // No data read, sleep briefly to avoid CPU spin and excessive logging
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                     }
                 },
                 Err(e) => {
