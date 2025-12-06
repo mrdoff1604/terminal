@@ -1,318 +1,230 @@
-use futures_util::future::FutureExt;
-use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
-use tracing::{debug, error, info};
+use crate::pty::pty_trait::{PtyConfig, PtyError, AsyncPty, PtyFactory};
+use async_trait::async_trait;
+use portable_pty::{native_pty_system, PtySize, CommandBuilder, Child, ExitStatus};
+use std::io;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::io::AsyncFd;
 
-use crate::pty::Pty;
-
-/// Portable PTY implementation using the portable-pty crate
+/// 基于portable-pty的异步实现
 pub struct PortablePty {
-    /// The PTY master for writing to the terminal (using trait object)
-    master: Arc<Mutex<Box<dyn portable_pty::MasterPty + Send>>>,
-    /// The reader for reading from the terminal (using standard Read trait)
-    reader: Arc<Mutex<Box<dyn Read + Send>>>,
-    /// The writer for writing to the terminal (using standard Write trait)
-    writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    /// The process handle
-    process: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
-    /// Flag to track if the PTY is alive
-    alive: Arc<Mutex<bool>>,
+    inner: AsyncFd<portable_pty::PtyMaster>,
+    child: Box<dyn Child + Send + Sync>,
+    child_exited: bool,
 }
 
 impl PortablePty {
-    /// Create a new PortablePty instance
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error + Send>> {
-        info!("Creating new PortablePty instance");
+    pub fn new(config: &PtyConfig) -> Result<Self, PtyError> {
+        let pty_system = native_pty_system();
+        let pair = pty_system.openpty(PtySize {
+            cols: config.cols,
+            rows: config.rows,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
 
-        // Spawn the PTY creation in a blocking thread since it's a blocking operation
-        let pty_result = tokio::task::spawn_blocking(move || {
-            // Create a command to run in the PTY
-            let cmd = portable_pty::CommandBuilder::new(if cfg!(target_os = "windows") {
-                "powershell"
-            } else {
-                "/bin/bash"
-            });
+        // 构建命令
+        let mut cmd_builder = CommandBuilder::new(&config.command);
+        
+        // 添加参数
+        for arg in &config.args {
+            cmd_builder.arg(arg);
+        }
+        
+        // 设置环境变量
+        for (key, value) in &config.env {
+            cmd_builder.env(key, value);
+        }
+        
+        // 设置工作目录
+        if let Some(cwd) = &config.cwd {
+            cmd_builder.cwd(cwd);
+        }
 
-            // Get the native PTY system
-            let pty_system = portable_pty::native_pty_system();
+        // 启动子进程
+        let child = Box::new(pair.slave.spawn_command(cmd_builder)?);
 
-            // Create a new PTY with default size
-            let pty_pair = match pty_system.openpty(portable_pty::PtySize {
-                rows: 24,
-                cols: 80,
-                pixel_width: 0,
-                pixel_height: 0,
-            }) {
-                Ok(pair) => pair,
-                Err(e) => {
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to open PTY: {}", e),
-                    )) as Box<dyn std::error::Error + Send>);
-                }
-            };
-
-            // Spawn the command in the PTY
-            let child = match pty_pair.slave.spawn_command(cmd) {
-                Ok(child) => child,
-                Err(e) => {
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to spawn command: {}", e),
-                    )) as Box<dyn std::error::Error + Send>);
-                }
-            };
-
-            // Create a reader from the master PTY
-            let reader = match pty_pair.master.try_clone_reader() {
-                Ok(reader) => reader,
-                Err(e) => {
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to create reader: {}", e),
-                    )) as Box<dyn std::error::Error + Send>);
-                }
-            };
-
-            // Create a writer from the master PTY
-            let writer = match pty_pair.master.take_writer() {
-                Ok(writer) => writer,
-                Err(e) => {
-                    return Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to create writer: {}", e),
-                    )) as Box<dyn std::error::Error + Send>);
-                }
-            };
-
-            Ok((pty_pair.master, writer, reader, child))
-        })
-        .await;
-
-        // Handle the result from the spawned task
-        let (master, writer, reader, child) = match pty_result {
-            Ok(inner_result) => match inner_result {
-                Ok((m, w, r, c)) => (m, w, r, c),
-                Err(e) => {
-                    return Err(e);
-                }
-            },
-            Err(e) => {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to create PTY: {}", e),
-                )));
-            }
-        };
+        // 用AsyncFd包装
+        let async_fd = AsyncFd::new(pair.master)?;
 
         Ok(Self {
-            master: Arc::new(Mutex::new(master)),
-            writer: Arc::new(Mutex::new(writer)),
-            reader: Arc::new(Mutex::new(reader)),
-            process: Arc::new(Mutex::new(child)),
-            alive: Arc::new(Mutex::new(true)),
+            inner: async_fd,
+            child,
+            child_exited: false,
         })
     }
 }
 
-#[async_trait::async_trait]
-impl Pty for PortablePty {
-    async fn write(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error + Send>> {
-        info!("Writing {} bytes to PTY", data.len());
-        let writer = Arc::clone(&self.writer);
-        let data = data.to_vec();
-        let data_len = data.len();
-
-        // Spawn the write operation in a blocking thread
-        let result = tokio::task::spawn_blocking(move || {
-            let mut writer_guard = writer.lock().unwrap();
-            // Use standard Write trait write_all method
-            match writer_guard.write_all(&data) {
-                Ok(_) => {
-                    info!("Successfully wrote {} bytes to PTY", data_len);
-                    Ok(())
-                }
-                Err(e) => {
-                    error!("Failed to write to PTY: {}", e);
-                    Err(Box::new(e) as Box<dyn std::error::Error + Send>)
-                }
-            }
-        })
-        .await;
-
-        match result {
-            Ok(write_result) => write_result,
-            Err(e) => {
-                error!("Failed to spawn write task: {}", e);
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to write to PTY: {}", e),
-                )))
-            }
+// 实现AsyncRead
+impl AsyncRead for PortablePty {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let self_mut = self.get_mut();
+        
+        // 如果子进程已退出且无数据可读，返回EOF
+        if self_mut.child_exited {
+            return Poll::Ready(Ok(()));
         }
-    }
 
-    async fn read(
-        &mut self,
-        buffer: &mut [u8],
-    ) -> Result<usize, Box<dyn std::error::Error + Send>> {
-        debug!("PTY read operation started");
-        let reader = Arc::clone(&self.reader);
-        let buffer_len = buffer.len();
-
-        // Spawn the read operation in a blocking thread without explicit timeout
-        // The portable-pty crate should handle non-blocking reads internally
-        let result = tokio::task::spawn_blocking(move || {
-            let mut reader_guard = reader.lock().unwrap();
-            let mut local_buffer = vec![0; buffer_len];
-            debug!("Attempting to read from PTY...");
-            let read_result = reader_guard.read(&mut local_buffer);
-            debug!("PTY read completed, result: {:?}", read_result);
-            (local_buffer, read_result)
-        })
-        .await;
-
-        match result {
-            Ok((local_buffer, Ok(read_bytes))) => {
-                // Copy the read data to the provided buffer
-                buffer[..read_bytes].copy_from_slice(&local_buffer[..read_bytes]);
-                if read_bytes > 0 {
-                    info!("Successfully read {} bytes from PTY", read_bytes);
-                }
-                Ok(read_bytes)
-            }
-            Ok((_, Err(e))) => {
-                // Check if the error is due to no data available
-                use std::io::ErrorKind;
-                match e.kind() {
-                    ErrorKind::WouldBlock | ErrorKind::TimedOut | ErrorKind::Interrupted => {
-                        // No data available, return 0 bytes
-                        debug!("PTY read would block, returning 0 bytes");
-                        Ok(0)
-                    }
-                    _ => {
-                        // Other error, return error
-                        error!("PTY read error: {}", e);
-                        Err(Box::new(e) as Box<dyn std::error::Error + Send>)
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Failed to spawn read task: {}", e);
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to read from PTY: {}", e),
-                )))
-            }
-        }
-    }
-
-    async fn resize(
-        &mut self,
-        cols: u16,
-        rows: u16,
-    ) -> Result<(), Box<dyn std::error::Error + Send>> {
-        let master = Arc::clone(&self.master);
-
-        // Spawn the resize operation in a blocking thread
-        let result = tokio::task::spawn_blocking(move || {
-            let master_guard = master.lock().unwrap();
-            match master_guard.resize(portable_pty::PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            }) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to resize PTY: {}", e),
-                )) as Box<dyn std::error::Error + Send>),
-            }
-        })
-        .await;
-
-        match result {
-            Ok(resize_result) => resize_result,
-            Err(e) => Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to resize PTY: {}", e),
-            ))),
-        }
-    }
-
-    async fn kill(&mut self) -> Result<(), Box<dyn std::error::Error + Send>> {
-        let process = Arc::clone(&self.process);
-        let alive = Arc::clone(&self.alive);
-
-        // Spawn the kill operation in a blocking thread
-        let result = tokio::task::spawn_blocking(move || {
-            let mut process_guard = process.lock().unwrap();
-            match process_guard.kill() {
-                Ok(_) => {
-                    // Update alive status
-                    *alive.lock().unwrap() = false;
-                    Ok(())
-                }
-                Err(e) => {
-                    // Update alive status even if kill fails
-                    *alive.lock().unwrap() = false;
-                    Err(Box::new(e) as Box<dyn std::error::Error + Send>)
-                }
-            }
-        })
-        .await;
-
-        match result {
-            Ok(kill_result) => kill_result,
-            Err(e) => Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to kill PTY process: {}", e),
-            ))),
-        }
-    }
-
-    async fn is_alive(&self) -> Result<bool, Box<dyn std::error::Error + Send>> {
-        let process = Arc::clone(&self.process);
-        let alive_flag = Arc::clone(&self.alive);
-
-        // Check if the process is still running
-        let result = tokio::task::spawn_blocking(move || {
-            let mut process_guard = process.lock().unwrap();
-            let alive = match process_guard.try_wait() {
-                Ok(Some(_)) => false,
-                Ok(None) => true,
-                Err(_) => false,
+        loop {
+            // 等待文件描述符可读
+            let mut guard = match self_mut.inner.poll_read_ready(cx) {
+                Poll::Ready(Ok(guard)) => guard,
+                Poll::Ready(Err(e)) => return Poll::Ready(Err(e)),
+                Poll::Pending => return Poll::Pending,
             };
 
-            // Update the alive flag if needed
-            let mut alive_flag_guard = alive_flag.lock().unwrap();
-            if *alive_flag_guard != alive {
-                *alive_flag_guard = alive;
+            // 尝试读取
+            match guard.try_io(|inner| {
+                let fd = inner.get_ref();
+                let dst = buf.initialize_unfilled();
+                
+                match fd.read(dst) {
+                    Ok(0) => {
+                        // EOF - 子进程可能已关闭输出
+                        Ok(0)
+                    }
+                    Ok(n) => {
+                        buf.advance(n);
+                        Ok(n)
+                    }
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // 数据未就绪，需要重新等待
+                        Err(io::Error::new(io::ErrorKind::WouldBlock, "retry"))
+                    }
+                    Err(e) => Err(e),
+                }
+            }) {
+                Ok(0) => {
+                    // 遇到EOF，标记子进程可能已退出
+                    self_mut.child_exited = true;
+                    return Poll::Ready(Ok(()));
+                }
+                Ok(_) => return Poll::Ready(Ok(())),
+                Err(_would_block) => {
+                    // 通知可能已过时，继续循环
+                    continue;
+                }
             }
-
-            Ok(alive)
-        })
-        .await;
-
-        match result {
-            Ok(is_alive_result) => is_alive_result,
-            Err(e) => Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to check PTY alive status: {}", e),
-            ))),
         }
     }
 }
 
-impl Drop for PortablePty {
-    /// Clean up resources when the PortablePty is dropped
-    fn drop(&mut self) {
-        info!("Dropping PortablePty, cleaning up resources");
-
-        // Try to kill the process if it's still running
-        if let Some(Err(e)) = self.kill().now_or_never() {
-            error!("Failed to kill PTY process on drop: {:?}", e);
+// 实现AsyncWrite
+impl AsyncWrite for PortablePty {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        let self_mut = self.get_mut();
+        
+        if self_mut.child_exited {
+            return Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "PTY process has terminated",
+            )));
         }
+
+        loop {
+            let mut guard = match self_mut.inner.poll_write_ready(cx) {
+                Poll::Ready(Ok(guard)) => guard,
+                Poll::Ready(Err(e)) => return Poll::Ready(Err(e)),
+                Poll::Pending => return Poll::Pending,
+            };
+
+            match guard.try_io(|inner| inner.get_ref().write(buf)) {
+                Ok(result) => return Poll::Ready(result),
+                Err(_) => continue, // 遇到WouldBlock，重试
+            }
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+}
+
+#[async_trait]
+impl AsyncPty for PortablePty {
+    async fn resize(&mut self, cols: u16, rows: u16) -> Result<(), PtyError> {
+        if self.child_exited {
+            return Err(PtyError::ProcessTerminated);
+        }
+        
+        Ok(())
+    }
+    
+    fn pid(&self) -> Option<u32> {
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::ExitStatusExt;
+            // portable-pty 可能不直接暴露PID
+            None
+        }
+        #[cfg(not(unix))]
+        None
+    }
+    
+    fn is_alive(&self) -> bool {
+        !self.child_exited
+    }
+    
+    async fn try_wait(&mut self) -> Result<Option<std::process::ExitStatus>, PtyError> {
+        if self.child_exited {
+            return Ok(None);
+        }
+        
+        // 检查子进程状态（非阻塞）
+        if let Some(status) = self.child.try_wait()? {
+            self.child_exited = true;
+            
+            // Convert portable_pty::ExitStatus to std::process::ExitStatus
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::ExitStatusExt;
+                Ok(Some(std::process::ExitStatus::from_raw(status.code() as i32)))
+            }
+            #[cfg(windows)]
+            {
+                Ok(Some(std::process::ExitStatus::from_raw(status.code() as u32)))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+    
+    async fn kill(&mut self) -> Result<(), PtyError> {
+        if self.child_exited {
+            return Ok(());
+        }
+        
+        self.child.kill()?;
+        self.child_exited = true;
+        Ok(())
+    }
+}
+
+// ================ 工厂实现 ================
+
+pub struct PortablePtyFactory;
+
+#[async_trait]
+impl PtyFactory for PortablePtyFactory {
+    async fn create(&self, config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
+        let pty = PortablePty::new(config)?;
+        Ok(Box::new(pty))
+    }
+    
+    fn name(&self) -> &'static str {
+        "portable-pty"
     }
 }

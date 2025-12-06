@@ -1,8 +1,8 @@
 /// Terminal session handler for processing terminal connections
 use tokio::select;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, error, info};
 
-use crate::pty::Pty;
 use crate::{app_state::AppState, protocol::TerminalConnection};
 
 /// Handle a terminal session using the TerminalConnection trait
