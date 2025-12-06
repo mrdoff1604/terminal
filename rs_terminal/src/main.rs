@@ -1,5 +1,4 @@
 /// Main entry point for Waylon Terminal Rust backend
-
 // Import modules
 mod app_state;
 mod config;
@@ -18,17 +17,14 @@ use server::{build_router, run_server, start_webtransport_service};
 async fn main() {
     // Initialize logging
     init_logging();
-    
+
     // Create application state
     let app_state = AppState::new();
-    
+
     // Start WebTransport service
     start_webtransport_service(app_state.clone());
-    
+
     // Build router and run server
     let app = build_router(app_state);
     run_server(app).await;
 }
-
-
-

@@ -2,7 +2,7 @@
 use std::fmt::Debug;
 use tracing::info;
 
-use crate::protocol::{TerminalConnection, TerminalMessage, ConnectionType};
+use crate::protocol::{ConnectionType, TerminalConnection, TerminalMessage};
 
 /// WebTransport connection implementation that implements TerminalConnection trait
 /// This follows the same pattern as WebSocketConnection
@@ -24,10 +24,7 @@ impl Debug for WebTransportConnection {
 impl WebTransportConnection {
     /// Create a new WebTransport connection
     pub fn new(id: String) -> Self {
-        Self {
-            id,
-            _session: (),
-        }
+        Self { id, _session: () }
     }
 }
 
@@ -39,32 +36,34 @@ impl TerminalConnection for WebTransportConnection {
         info!("WebTransport send_text called: {}", message);
         Ok(())
     }
-    
+
     async fn send_binary(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error + Send>> {
         // WebTransport implementation for sending binary messages
         // This will be implemented later with actual WebTransport logic
         info!("WebTransport send_binary called with {} bytes", data.len());
         Ok(())
     }
-    
-    async fn receive(&mut self) -> Option<Result<TerminalMessage, Box<dyn std::error::Error + Send>>> {
+
+    async fn receive(
+        &mut self,
+    ) -> Option<Result<TerminalMessage, Box<dyn std::error::Error + Send>>> {
         // WebTransport implementation for receiving messages
         // This will be implemented later with actual WebTransport logic
         // For now, we'll just return None to indicate no messages available
         None
     }
-    
+
     async fn close(&mut self) -> Result<(), Box<dyn std::error::Error + Send>> {
         // WebTransport implementation for closing the connection
         // This will be implemented later with actual WebTransport logic
         info!("WebTransport close called");
         Ok(())
     }
-    
+
     fn id(&self) -> &str {
         &self.id
     }
-    
+
     fn connection_type(&self) -> ConnectionType {
         ConnectionType::WebTransport
     }
