@@ -78,32 +78,22 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
         }
     };
     
-    // Get default shell configuration as fallback
-    let default_shell_config = match app_config.shells.get("default") {
-        Some(config) => config,
-        None => {
-            return Err(PtyError::Other("No default shell configuration found in shells.default".to_string()));
-        }
-    };
-    
     // Extract command and arguments from shell config (command is required for each shell)
     let command = shell_config.command[0].clone();
     let args: Vec<String> = shell_config.command.iter().skip(1).cloned().collect();
     
     // Determine working directory with priority: shell_config.working_directory > default_shell_config.working_directory
     let working_directory = shell_config.working_directory.clone()
-        .or_else(|| default_shell_config.working_directory.clone());
+        .or_else(|| app_config.default_shell_config.working_directory.clone());
     
     // Determine terminal size with priority: shell_config.size > default_shell_config.size
-    let terminal_size = shell_config.size.as_ref().unwrap_or_else(|| {
-        default_shell_config.size.as_ref().expect("No terminal size configured in shells.default")
-    }).clone();
+    let terminal_size = shell_config.size.as_ref().unwrap_or(&app_config.default_shell_config.size).clone();
     
     // Determine environment variables with priority: shell_config.environment > default_shell_config.environment
     let mut environment = Vec::new();
     
-    // Add default environment variables from shells.default
-    if let Some(default_env) = &default_shell_config.environment {
+    // Add default environment variables from default_shell_config
+    if let Some(default_env) = &app_config.default_shell_config.environment {
         environment.reserve(default_env.len());
         for (key, value) in default_env {
             environment.push((key.clone(), value.clone()));
