@@ -1,7 +1,8 @@
 /// Message handler for processing terminal messages
 use crate::{protocol::{TerminalConnection, TerminalMessage}, pty::AsyncPty};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, error, info};
-use tokio::io::AsyncWriteExt;
+use super::ServiceError;
 
 /// Message handler responsible for processing terminal messages
 pub struct MessageHandler;
@@ -19,7 +20,7 @@ impl MessageHandler {
         connection: &mut impl TerminalConnection,
         pty: &mut Box<dyn AsyncPty>,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         match message {
             TerminalMessage::Text(text) => {
                 self.handle_text_message(text, connection, pty, session_id).await
@@ -46,7 +47,7 @@ impl MessageHandler {
         _connection: &mut impl TerminalConnection,
         pty: &mut Box<dyn AsyncPty>,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         debug!("Received text message from session {}: {}", session_id, text);
         
         // Write the text to PTY directly (non-blocking async)
@@ -54,7 +55,7 @@ impl MessageHandler {
             Ok(_) => Ok(false),
             Err(e) => {
                 error!("Failed to write text to PTY for session {}: {}", session_id, e);
-                Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                Err(ServiceError::Other(e.to_string()))
             }
         }
     }
@@ -66,7 +67,7 @@ impl MessageHandler {
         _connection: &mut impl TerminalConnection,
         pty: &mut Box<dyn AsyncPty>,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         debug!("Received binary message from session {} of length {}", session_id, bin.len());
         
         // Write binary data to PTY directly (non-blocking async)
@@ -74,7 +75,7 @@ impl MessageHandler {
             Ok(_) => Ok(false),
             Err(e) => {
                 error!("Failed to write binary data to PTY for session {}: {}", session_id, e);
-                Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                Err(ServiceError::Other(e.to_string()))
             }
         }
     }
@@ -84,7 +85,7 @@ impl MessageHandler {
         &self,
         connection: &mut impl TerminalConnection,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         debug!("Received ping from session {}", session_id);
         
         // Respond with pong
@@ -92,7 +93,7 @@ impl MessageHandler {
             Ok(_) => Ok(false),
             Err(e) => {
                 error!("Failed to send pong response to session {}: {}", session_id, e);
-                Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                Err(ServiceError::Connection(e))
             }
         }
     }
@@ -101,7 +102,7 @@ impl MessageHandler {
     async fn handle_pong_message(
         &self,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         debug!("Received pong from session {}", session_id);
         // Pong received, do nothing
         Ok(false)
@@ -112,7 +113,7 @@ impl MessageHandler {
         &self,
         _connection: &mut impl TerminalConnection,
         session_id: &str
-    ) -> Result<bool, std::io::Error> {
+    ) -> Result<bool, ServiceError> {
         info!("Received close message from session {}", session_id);
         // Return true to indicate that the session should be closed
         Ok(true)
@@ -124,7 +125,7 @@ impl MessageHandler {
         data: &[u8],
         connection: &mut impl TerminalConnection,
         session_id: &str
-    ) -> Result<(), std::io::Error> {
+    ) -> Result<(), ServiceError> {
         debug!("Received PTY data for session {}: {:?}", session_id, String::from_utf8_lossy(data));
         
         // Try to convert data to string for text-based protocols
@@ -133,14 +134,14 @@ impl MessageHandler {
                 // Send text to client
                 if let Err(e) = connection.send_text(&text).await {
                     error!("Failed to send PTY text output to session {}: {}", session_id, e);
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+                    return Err(ServiceError::Connection(e));
                 }
             },
             Err(_) => {
                 // Send as binary if conversion fails
                 if let Err(e) = connection.send_binary(data).await {
                     error!("Failed to send PTY binary output to session {}: {}", session_id, e);
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()));
+                    return Err(ServiceError::Connection(e));
                 }
             }
         }

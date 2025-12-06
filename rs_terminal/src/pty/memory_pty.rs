@@ -98,18 +98,24 @@ impl AsyncRead for MemoryPty {
         let this = self.get_mut();
         
         // Check if we have data in the output buffer
-        let mut output_buf = this.output_buffer.try_lock().unwrap();
-        
-        if !output_buf.is_empty() {
-            // Copy as much data as possible to the buffer
-            let len = std::cmp::min(output_buf.len(), buf.remaining());
-            buf.put_slice(&output_buf[..len]);
-            output_buf.drain(..len);
-            
-            std::task::Poll::Ready(Ok(()))
-        } else {
-            // No data available, return Pending
-            std::task::Poll::Pending
+        match this.output_buffer.try_lock() {
+            Ok(mut output_buf) => {
+                if !output_buf.is_empty() {
+                    // Copy as much data as possible to the buffer
+                    let len = std::cmp::min(output_buf.len(), buf.remaining());
+                    buf.put_slice(&output_buf[..len]);
+                    output_buf.drain(..len);
+                    
+                    std::task::Poll::Ready(Ok(()))
+                } else {
+                    // No data available, return Pending
+                    std::task::Poll::Pending
+                }
+            },
+            Err(_) => {
+                // If we can't get the lock, return Pending and let the caller try again
+                std::task::Poll::Pending
+            }
         }
     }
 }
@@ -124,7 +130,15 @@ impl AsyncWrite for MemoryPty {
         let this = self.get_mut();
         
         // Check if PTY is alive
-        if !*this.alive.try_lock().unwrap() {
+        let is_alive = match this.alive.try_lock() {
+            Ok(alive) => *alive,
+            Err(_) => {
+                // If we can't get the lock, assume PTY is alive and continue
+                true
+            }
+        };
+        
+        if !is_alive {
             return std::task::Poll::Ready(Err(io::Error::new(
                 io::ErrorKind::BrokenPipe,
                 "PTY is not alive",
@@ -176,7 +190,14 @@ impl AsyncPty for MemoryPty {
     }
     
     fn is_alive(&self) -> bool {
-        *self.alive.try_lock().unwrap()
+        match self.alive.try_lock() {
+            Ok(alive) => *alive,
+            Err(_) => {
+                // If we can't get the lock, assume PTY is alive
+                // This is a reasonable assumption since the PTY is likely alive if the lock is contended
+                true
+            }
+        }
     }
     
     async fn try_wait(&mut self) -> Result<Option<std::process::ExitStatus>, PtyError> {
