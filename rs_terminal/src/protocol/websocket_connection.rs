@@ -1,6 +1,6 @@
 /// WebSocket connection implementation for TerminalConnection trait
 use std::fmt::Debug;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 use axum::extract::ws::Message::{Binary, Close, Ping, Pong, Text};
 use axum::extract::ws::WebSocket;
@@ -33,11 +33,11 @@ impl TerminalConnection for WebSocketConnection {
     }
 
     async fn send_binary(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error + Send>> {
-        debug!("Sending binary data to client, size: {}", data.len());
+        info!("Sending binary data to client, size: {}", data.len());
         let result = self.socket.send(Binary(data.to_vec())).await;
         match result {
             Ok(_) => {
-                debug!("Successfully sent binary data to client");
+                info!("Successfully sent binary data to client");
                 Ok(())
             }
             Err(e) => {

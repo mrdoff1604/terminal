@@ -49,28 +49,35 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     // Start a separate async task to continuously read PTY output
     // This ensures the main select! loop won't be blocked by PTY reads
     let pty_clone = pty.clone();
+    let conn_id_clone = conn_id.clone();
     let read_task = tokio::spawn(async move {
         let mut buffer = [0u8; 4096];
         loop {
             // Get a lock on the PTY and call the async read method
             let mut pty_guard = pty_clone.lock().await;
             let read_result = pty_guard.read(&mut buffer).await;
-
+            
             match read_result {
                 Ok(read_bytes) => {
                     if read_bytes > 0 {
                         // Send the read data to the main loop
                         let data = buffer[..read_bytes].to_vec();
+                        info!("Read task: Sending {} bytes to channel for session {}", data.len(), conn_id_clone);
                         if let Err(e) = tx.send(data) {
-                            error!("Failed to send PTY output to main loop: {}", e);
+                            error!("Read task: Failed to send PTY output to main loop: {}", e);
                             break;
                         }
+                        info!("Read task: Successfully sent data to channel");
+                    } else {
+                        // No data read, sleep briefly to avoid CPU spin
+                        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                     }
-                }
+                },
                 Err(e) => {
-                    error!("Error reading from PTY: {}", e);
+                    error!("Read task: Error reading from PTY: {}", e);
                     // Don't break the loop on error, just log it and continue
-                }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                },
             }
         }
     });
@@ -133,12 +140,14 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
             // Handle PTY output received from the read task
             // This is non-blocking as we're just receiving from a channel
             Some(data) = rx.recv() => {
-                debug!("Read {} bytes from PTY for session {}", data.len(), conn_id);
+                info!("Main loop: Received {} bytes from PTY read task for session {}", data.len(), conn_id);
                 // Send the PTY output back to the connection
+                info!("Main loop: Sending data to client via connection");
                 if let Err(e) = connection.send_binary(&data).await {
-                    error!("Failed to send PTY output to session {}: {}", conn_id, e);
+                    error!("Main loop: Failed to send PTY output to session {}: {}", conn_id, e);
                     break;
                 }
+                info!("Main loop: Successfully sent PTY output to client");
             },
         }
     }
