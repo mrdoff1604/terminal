@@ -1,6 +1,7 @@
 /// Pure async memory-based PTY implementation for testing and development
 use async_trait::async_trait;
 use std::io;
+use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::sync::Mutex;
 
@@ -8,10 +9,10 @@ use crate::pty::pty_trait::{AsyncPty, PtyConfig, PtyError, PtyFactory};
 
 /// Pure async memory-based PTY implementation
 pub struct MemoryPty {
-    // Use a buffer to simulate PTY output
-    output_buffer: Mutex<Vec<u8>>,
-    // Flag to indicate if PTY is alive
-    alive: Mutex<bool>,
+    // Use a buffer to simulate PTY output with Arc for sharing
+    output_buffer: Arc<Mutex<Vec<u8>>>,
+    // Flag to indicate if PTY is alive with Arc for sharing
+    alive: Arc<Mutex<bool>>,
     // Command being executed
     command: String,
     // Current directory
@@ -22,14 +23,14 @@ impl MemoryPty {
     /// Create a new MemoryPty instance
     pub async fn new(config: &PtyConfig) -> Result<Self, PtyError> {
         // Initialize with a welcome message
-        let output_buffer = Mutex::new(format!("Memory PTY initialized for command: {}\r\n", config.command).into_bytes());
+        let output_buffer = Arc::new(Mutex::new(format!("Memory PTY initialized for command: {}\r\n", config.command).into_bytes()));
         
         // Convert PathBuf to String if needed
         let cwd_str = config.cwd.as_ref().and_then(|path| path.to_str().map(|s| s.to_string()));
         
         Ok(Self {
             output_buffer,
-            alive: Mutex::new(true),
+            alive: Arc::new(Mutex::new(true)),
             command: config.command.clone(),
             cwd: cwd_str,
         })
@@ -197,8 +198,8 @@ impl AsyncPty for MemoryPty {
 impl Clone for MemoryPty {
     fn clone(&self) -> Self {
         Self {
-            output_buffer: Mutex::new(Vec::new()),
-            alive: Mutex::new(*self.alive.try_lock().unwrap()),
+            output_buffer: self.output_buffer.clone(),
+            alive: self.alive.clone(),
             command: self.command.clone(),
             cwd: self.cwd.clone(),
         }
