@@ -9,7 +9,6 @@ session_timeout = 1800000
 # Shell configurations including default
 [shells.default]
 # Default shell configuration (used as fallback for all shells)
-command = ["bash", "-l"]
 size.columns = 80
 size.rows = 24
 working_directory = "."

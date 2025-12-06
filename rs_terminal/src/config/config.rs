@@ -28,8 +28,8 @@ pub struct TerminalSize {
 /// Shell configuration
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ShellConfig {
-    /// Command to execute (optional, defaults to shells.default.command)
-    pub command: Option<Vec<String>>,
+    /// Command to execute (required for each shell)
+    pub command: Vec<String>,
     
     /// Working directory (optional, defaults to shells.default.working_directory)
     pub working_directory: Option<PathBuf>,

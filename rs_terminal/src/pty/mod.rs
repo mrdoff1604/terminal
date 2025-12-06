@@ -80,12 +80,9 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
         panic!("No default shell configuration found in shells.default")
     });
     
-    // Extract command and arguments with priority: shell_config.command > default_shell_config.command
-    let command_vec = shell_config.command.as_ref().unwrap_or_else(|| {
-        default_shell_config.command.as_ref().expect("No command configured in shells.default")
-    });
-    let command = command_vec[0].clone();
-    let args: Vec<String> = command_vec.iter().skip(1).cloned().collect();
+    // Extract command and arguments from shell config (command is required for each shell)
+    let command = shell_config.command[0].clone();
+    let args: Vec<String> = shell_config.command.iter().skip(1).cloned().collect();
     
     // Determine working directory with priority: shell_config.working_directory > default_shell_config.working_directory
     let working_directory = shell_config.working_directory.clone()
