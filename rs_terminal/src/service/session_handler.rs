@@ -21,7 +21,7 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     drop(sessions);
 
     // Create PTY for this session using factory function
-    let pty = match crate::pty::create_pty().await {
+    let mut pty = match crate::pty::create_pty().await {
         Ok(pty) => pty,
         Err(e) => {
             error!("Failed to create PTY for session {}: {}", conn_id, e);
@@ -40,49 +40,8 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
 
     info!("PTY created for session {}", conn_id);
 
-    // Wrap PTY in Arc and Mutex for safe sharing between tasks
-    let pty = std::sync::Arc::new(tokio::sync::Mutex::new(pty));
-
-    // Create a channel to communicate between PTY read task and main loop
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-
-    // Start a separate async task to continuously read PTY output
-    // This ensures the main select! loop won't be blocked by PTY reads
-    let pty_clone = pty.clone();
-    let conn_id_clone = conn_id.clone();
-    let read_task = tokio::spawn(async move {
-        let mut buffer = [0u8; 4096];
-        loop {
-            // Get a lock on the PTY and call the async read method
-            let mut pty_guard = pty_clone.lock().await;
-            let read_result = pty_guard.read(&mut buffer).await;
-            
-            match read_result {
-                Ok(read_bytes) => {
-                    if read_bytes > 0 {
-                        // Send the read data to the main loop
-                        let data = buffer[..read_bytes].to_vec();
-                        info!("Read task: Sending {} bytes to channel for session {}", data.len(), conn_id_clone);
-                        if let Err(e) = tx.send(data) {
-                            error!("Read task: Failed to send PTY output to main loop: {}", e);
-                            break;
-                        }
-                        info!("Read task: Successfully sent data to channel");
-                    } else {
-                        // No data read, sleep briefly to avoid CPU spin and excessive logging
-                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                    }
-                },
-                Err(e) => {
-                    error!("Read task: Error reading from PTY: {}", e);
-                    // Don't break the loop on error, just log it and continue
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                },
-            }
-        }
-    });
-
-    // Main session loop - handle both incoming messages and PTY output
+    // Main session loop - handle both incoming messages and PTY output directly
+    let mut pty_buffer = [0u8; 4096];
     loop {
         select! {
             // Handle incoming messages from the connection
@@ -92,18 +51,16 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
                         match msg {
                             crate::protocol::TerminalMessage::Text(text) => {
                                 debug!("Received text message from session {}: {}", conn_id, text);
-                                // Write the text to PTY
-                                let mut pty_guard = pty.lock().await;
-                                if let Err(e) = pty_guard.write(text.as_bytes()).await {
+                                // Write the text to PTY directly (non-blocking async)
+                                if let Err(e) = pty.write(text.as_bytes()).await {
                                     error!("Failed to write to PTY for session {}: {}", conn_id, e);
                                     break;
                                 }
                             }
                             crate::protocol::TerminalMessage::Binary(bin) => {
                                 debug!("Received binary message from session {} of length {}", conn_id, bin.len());
-                                // Write binary data to PTY
-                                let mut pty_guard = pty.lock().await;
-                                if let Err(e) = pty_guard.write(&bin).await {
+                                // Write binary data to PTY directly (non-blocking async)
+                                if let Err(e) = pty.write(&bin).await {
                                     error!("Failed to write binary data to PTY for session {}: {}", conn_id, e);
                                     break;
                                 }
@@ -137,46 +94,48 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
                     }
                 }
             },
-            // Handle PTY output received from the read task
-            // This is non-blocking as we're just receiving from a channel
-            Some(data) = rx.recv() => {
-                info!("Main loop: Received {} bytes from PTY read task for session {}", data.len(), conn_id);
-                // Print the data in a human-readable format
-                debug!("Main loop: PTY data: {:?}", String::from_utf8_lossy(&data));
-                
-                // Try to convert data to string for text-based protocols
-                match String::from_utf8(data.clone()) {
-                    Ok(text) => {
-                        info!("Main loop: Sending text data to client via connection");
-                        debug!("Main loop: Text content to send: {:?}", text);
-                        debug!("Main loop: Text length: {}", text.len());
+            // Handle PTY output directly (non-blocking async)
+            read_result = pty.read(&mut pty_buffer) => {
+                match read_result {
+                    Ok(0) => {
+                        // EOF - PTY has closed
+                        info!("PTY closed for session {}", conn_id);
+                        break;
+                    }
+                    Ok(n) => {
+                        // PTY output received
+                        debug!("Received {} bytes from PTY for session {}", n, conn_id);
                         
-                        if let Err(e) = connection.send_text(&text).await {
-                            error!("Main loop: Failed to send PTY text output to session {}: {}", conn_id, e);
-                            break;
-                        }
-                        info!("Main loop: Successfully sent PTY text output to client");
-                    },
-                    Err(_) => {
-                        // If conversion fails, send as binary
-                        info!("Main loop: Sending binary data to client via connection");
-                        debug!("Main loop: Binary data to send: {:?}", data);
-                        debug!("Main loop: Binary length: {}", data.len());
+                        let data = &pty_buffer[..n];
+                        // Print the data in a human-readable format
+                        debug!("PTY data: {:?}", String::from_utf8_lossy(data));
                         
-                        if let Err(e) = connection.send_binary(&data).await {
-                            error!("Main loop: Failed to send PTY binary output to session {}: {}", conn_id, e);
-                            break;
+                        // Try to convert data to string for text-based protocols
+                        match String::from_utf8(data.to_vec()) {
+                            Ok(text) => {
+                                // Send text to client
+                                if let Err(e) = connection.send_text(&text).await {
+                                    error!("Failed to send PTY text output to session {}: {}", conn_id, e);
+                                    break;
+                                }
+                            },
+                            Err(_) => {
+                                // Send as binary if conversion fails
+                                if let Err(e) = connection.send_binary(data).await {
+                                    error!("Failed to send PTY binary output to session {}: {}", conn_id, e);
+                                    break;
+                                }
+                            }
                         }
-                        info!("Main loop: Successfully sent PTY binary output to client");
+                    }
+                    Err(e) => {
+                        error!("Error reading from PTY for session {}: {}", conn_id, e);
+                        break;
                     }
                 }
             },
         }
     }
-
-    // Clean up the read task
-    read_task.abort();
-    let _ = read_task.await;
 
     // Clean up resources
     info!("Cleaning up session {}", conn_id);
@@ -187,7 +146,7 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     }
 
     // Kill the PTY process
-    if let Err(e) = pty.lock().await.kill().await {
+    if let Err(e) = pty.kill().await {
         error!("Failed to kill PTY process for session {}: {}", conn_id, e);
     }
 
