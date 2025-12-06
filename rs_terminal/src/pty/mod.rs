@@ -5,17 +5,11 @@
 mod pty_trait;
 #[cfg(unix)]
 mod unix_pty_impl;
-#[cfg(windows)]
-mod windows_pty_impl;
-mod memory_pty;
 
 // Export all public types and traits
 pub use pty_trait::*;
 #[cfg(unix)]
 pub use unix_pty_impl::{UnixPty, UnixPtyFactory};
-#[cfg(windows)]
-pub use windows_pty_impl::{WindowsPty, WindowsPtyFactory};
-pub use memory_pty::{MemoryPty, MemoryPtyFactory};
 
 
 
@@ -81,32 +75,17 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
         cwd: working_directory,
     };
     
-    // 根据平台选择不同的PTY实现
+    // 只使用Unix PTY实现
     #[cfg(unix)]
     {
         let factory = UnixPtyFactory::default();
         let pty = factory.create(&pty_config).await?;
         Ok(pty)
     }
-    #[cfg(windows)]
+    #[cfg(not(unix))]
     {
-        // 首先尝试WindowsPty，如果不可用则回退到MemoryPty
-        let factory = WindowsPtyFactory::default();
-        match factory.create(&pty_config).await {
-            Ok(pty) => Ok(pty),
-            Err(e) => {
-                tracing::info!("Falling back to MemoryPty because WindowsPty failed: {}", e);
-                let factory = MemoryPtyFactory::default();
-                let pty = factory.create(&pty_config).await?;
-                Ok(pty)
-            }
-        }
-    }
-    #[cfg(not(any(unix, windows)))]
-    {
-        let factory = MemoryPtyFactory::default();
-        let pty = factory.create(&pty_config).await?;
-        Ok(pty)
+        // 非Unix平台不支持PTY
+        return Err(PtyError::Other("PTY not supported on this platform".to_string()));
     }
 }
 
@@ -115,18 +94,11 @@ pub async fn create_pty_with_config(config: &PtyConfig) -> Result<Box<dyn AsyncP
     #[cfg(unix)]
     return UnixPtyFactory::default().create(config).await;
     
-    #[cfg(windows)]
+    #[cfg(not(unix))]
     {
-        // 首先尝试WindowsPty，如果不可用则回退到MemoryPty
-        let factory = WindowsPtyFactory::default();
-        match factory.create(config).await {
-            Ok(pty) => Ok(pty),
-            Err(_) => MemoryPtyFactory::default().create(config).await,
-        }
+        // 非Unix平台不支持PTY
+        return Err(PtyError::Other("PTY not supported on this platform".to_string()));
     }
-    
-    #[cfg(not(any(unix, windows)))]
-    return MemoryPtyFactory::default().create(config).await;
 }
 
 /// Create a new PTY instance using a specific factory
