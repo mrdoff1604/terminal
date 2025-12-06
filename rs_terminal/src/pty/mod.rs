@@ -4,13 +4,17 @@
 
 mod pty_trait;
 #[cfg(unix)]
-mod portable_pty_impl;
+mod unix_pty_impl;
+#[cfg(windows)]
+mod windows_pty_impl;
 mod memory_pty;
 
 // Export all public types and traits
 pub use pty_trait::*;
 #[cfg(unix)]
-pub use portable_pty_impl::{PortablePty, PortablePtyFactory};
+pub use unix_pty_impl::{UnixPty, UnixPtyFactory};
+#[cfg(windows)]
+pub use windows_pty_impl::{WindowsPty, WindowsPtyFactory};
 pub use memory_pty::{MemoryPty, MemoryPtyFactory};
 
 /// Create a new PTY instance with default configuration
@@ -31,13 +35,26 @@ pub async fn create_pty() -> Result<Box<dyn AsyncPty>, PtyError> {
 
     // 根据平台选择不同的PTY实现
     #[cfg(unix)]
-    { 
-        let factory = PortablePtyFactory::default();
+    {
+        let factory = UnixPtyFactory::default();
         let pty = factory.create(&config).await?;
         Ok(pty)
     }
-    #[cfg(not(unix))]
-    { 
+    #[cfg(windows)]
+    {
+        // 首先尝试WindowsPty，如果不可用则回退到MemoryPty
+        let factory = WindowsPtyFactory::default();
+        match factory.create(&config).await {
+            Ok(pty) => Ok(pty),
+            Err(_) => {
+                let factory = MemoryPtyFactory::default();
+                let pty = factory.create(&config).await?;
+                Ok(pty)
+            }
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
         let factory = MemoryPtyFactory::default();
         let pty = factory.create(&config).await?;
         Ok(pty)
@@ -74,13 +91,26 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
     
     // 根据平台选择不同的PTY实现
     #[cfg(unix)]
-    { 
-        let factory = PortablePtyFactory::default();
+    {
+        let factory = UnixPtyFactory::default();
         let pty = factory.create(&pty_config).await?;
         Ok(pty)
     }
-    #[cfg(not(unix))]
-    { 
+    #[cfg(windows)]
+    {
+        // 首先尝试WindowsPty，如果不可用则回退到MemoryPty
+        let factory = WindowsPtyFactory::default();
+        match factory.create(&pty_config).await {
+            Ok(pty) => Ok(pty),
+            Err(_) => {
+                let factory = MemoryPtyFactory::default();
+                let pty = factory.create(&pty_config).await?;
+                Ok(pty)
+            }
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
         let factory = MemoryPtyFactory::default();
         let pty = factory.create(&pty_config).await?;
         Ok(pty)
@@ -90,9 +120,19 @@ pub async fn create_pty_from_config(app_config: &crate::config::TerminalConfig) 
 /// Create a new PTY instance with custom configuration
 pub async fn create_pty_with_config(config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
     #[cfg(unix)]
-    return PortablePtyFactory::default().create(config).await;
+    return UnixPtyFactory::default().create(config).await;
     
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        // 首先尝试WindowsPty，如果不可用则回退到MemoryPty
+        let factory = WindowsPtyFactory::default();
+        match factory.create(config).await {
+            Ok(pty) => Ok(pty),
+            Err(_) => MemoryPtyFactory::default().create(config).await,
+        }
+    }
+    
+    #[cfg(not(any(unix, windows)))]
     return MemoryPtyFactory::default().create(config).await;
 }
 

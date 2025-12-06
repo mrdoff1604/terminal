@@ -41,6 +41,15 @@ pub enum PtyError {
     ProcessTerminated,
     #[error("Resize failed: {0}")]
     ResizeFailed(String),
+    #[error("Other error: {0}")]
+    Other(String),
+}
+
+// 添加From<anyhow::Error>实现
+impl From<anyhow::Error> for PtyError {
+    fn from(error: anyhow::Error) -> Self {
+        PtyError::Other(error.to_string())
+    }
 }
 
 // ================ 核心Trait定义 ================

@@ -7,14 +7,14 @@ use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::io::unix::AsyncFd;
 
-/// 基于portable-pty的异步实现
-pub struct PortablePty {
+/// 基于portable-pty的Unix PTY实现
+pub struct UnixPty {
     inner: AsyncFd<portable_pty::PtyMaster>,
     child: Box<dyn Child + Send + Sync>,
     child_exited: bool,
 }
 
-impl PortablePty {
+impl UnixPty {
     pub fn new(config: &PtyConfig) -> Result<Self, PtyError> {
         let pty_system = native_pty_system();
         let pair = pty_system.openpty(PtySize {
@@ -57,7 +57,7 @@ impl PortablePty {
 }
 
 // 实现AsyncRead
-impl AsyncRead for PortablePty {
+impl AsyncRead for UnixPty {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -115,7 +115,7 @@ impl AsyncRead for PortablePty {
 }
 
 // 实现AsyncWrite
-impl AsyncWrite for PortablePty {
+impl AsyncWrite for UnixPty {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -154,11 +154,20 @@ impl AsyncWrite for PortablePty {
 }
 
 #[async_trait]
-impl AsyncPty for PortablePty {
+impl AsyncPty for UnixPty {
     async fn resize(&mut self, cols: u16, rows: u16) -> Result<(), PtyError> {
         if self.child_exited {
             return Err(PtyError::ProcessTerminated);
         }
+        
+        // 获取PTY master并调整大小
+        let pty_master = self.inner.get_ref();
+        pty_master.resize(PtySize {
+            cols,
+            rows,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
         
         Ok(())
     }
@@ -215,16 +224,16 @@ impl AsyncPty for PortablePty {
 
 // ================ 工厂实现 ================
 
-pub struct PortablePtyFactory;
+pub struct UnixPtyFactory;
 
 #[async_trait]
-impl PtyFactory for PortablePtyFactory {
+impl PtyFactory for UnixPtyFactory {
     async fn create(&self, config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
-        let pty = PortablePty::new(config)?;
+        let pty = UnixPty::new(config)?;
         Ok(Box::new(pty))
     }
     
     fn name(&self) -> &'static str {
-        "portable-pty"
+        "unix-pty"
     }
 }
