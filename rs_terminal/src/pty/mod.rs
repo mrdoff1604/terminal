@@ -29,16 +29,28 @@ pub async fn create_pty() -> Result<Box<dyn AsyncPty>, PtyError> {
         cwd: None,
     };
 
-    // 创建PTY - 使用MemoryPtyFactory作为默认实现
-    // PortablePtyFactory可以用于生产环境
-    let factory = MemoryPtyFactory::default();
-    let pty = factory.create(&config).await?;
-    Ok(pty)
+    // 根据平台选择不同的PTY实现
+    #[cfg(unix)]
+    { 
+        let factory = PortablePtyFactory::default();
+        let pty = factory.create(&config).await?;
+        Ok(pty)
+    }
+    #[cfg(not(unix))]
+    { 
+        let factory = MemoryPtyFactory::default();
+        let pty = factory.create(&config).await?;
+        Ok(pty)
+    }
 }
 
 /// Create a new PTY instance with custom configuration
 pub async fn create_pty_with_config(config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
-    MemoryPtyFactory::default().create(config).await
+    #[cfg(unix)]
+    return PortablePtyFactory::default().create(config).await;
+    
+    #[cfg(not(unix))]
+    return MemoryPtyFactory::default().create(config).await;
 }
 
 /// Create a new PTY instance using a specific factory

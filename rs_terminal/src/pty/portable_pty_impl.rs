@@ -5,7 +5,7 @@ use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio::io::AsyncFd;
+use tokio::io::unix::AsyncFd;
 
 /// 基于portable-pty的异步实现
 pub struct PortablePty {
