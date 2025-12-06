@@ -141,8 +141,8 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
             // This is non-blocking as we're just receiving from a channel
             Some(data) = rx.recv() => {
                 info!("Main loop: Received {} bytes from PTY read task for session {}", data.len(), conn_id);
-                // Print the raw data for debugging
-                debug!("Main loop: Raw PTY data: {:?}", data);
+                // Print the data in a human-readable format
+                debug!("Main loop: PTY data: {:?}", String::from_utf8_lossy(&data));
                 
                 // Try to convert data to string for text-based protocols
                 match String::from_utf8(data.clone()) {
