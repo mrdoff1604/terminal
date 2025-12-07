@@ -2,15 +2,21 @@ use std::process::ExitStatus;
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use expectrl::spawn;
+use expectrl::{spawn, session::Session};
 
 use crate::pty::{AsyncPty, PtyConfig, PtyError, PtyFactory};
 
 /// 基于expectrl库的PTY实现
+#[cfg(unix)]
 pub struct ExpectrlPty {
-    #[cfg(unix)]
-    // 使用动态类型避免泛型参数问题
-    session: Mutex<Box<dyn std::any::Any + Send + Sync>>,
+    // 直接使用Session类型，指定具体的泛型参数
+    session: Mutex<Session<std::process::Child, expectrl::stream::tokio::Stream>>,
+    pid: Option<u32>,
+    child_exited: bool,
+}
+
+#[cfg(not(unix))]
+pub struct ExpectrlPty {
     pid: Option<u32>,
     child_exited: bool,
 }
@@ -20,7 +26,10 @@ impl AsyncPty for ExpectrlPty {
     async fn resize(&mut self, cols: u16, rows: u16) -> Result<(), PtyError> {
         #[cfg(unix)]
         {
-            Err(PtyError::Other("resize not implemented for expectrl-pty".to_string()))
+            let mut session = self.session.lock().unwrap();
+            session.resize(cols, rows).await.map_err(|e| {
+                PtyError::ResizeFailed(e.to_string())
+            })
         }
         
         #[cfg(not(unix))]
@@ -40,7 +49,20 @@ impl AsyncPty for ExpectrlPty {
     async fn try_wait(&mut self) -> Result<Option<ExitStatus>, PtyError> {
         #[cfg(unix)]
         {
-            Err(PtyError::Other("try_wait not implemented for expectrl-pty".to_string()))
+            let mut session = self.session.lock().unwrap();
+            
+            match session.try_status() {
+                Ok(Some(status)) => {
+                    self.child_exited = true;
+                    Ok(Some(status))
+                },
+                Ok(None) => {
+                    Ok(None)
+                },
+                Err(e) => {
+                    Err(PtyError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))
+                },
+            }
         }
         
         #[cfg(not(unix))]
@@ -52,7 +74,10 @@ impl AsyncPty for ExpectrlPty {
     async fn kill(&mut self) -> Result<(), PtyError> {
         #[cfg(unix)]
         {
-            Err(PtyError::Other("kill not implemented for expectrl-pty".to_string()))
+            let mut session = self.session.lock().unwrap();
+            session.kill().await.map_err(|e| {
+                PtyError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))
+            })
         }
         
         #[cfg(not(unix))]
@@ -71,12 +96,15 @@ impl tokio::io::AsyncRead for ExpectrlPty {
     ) -> std::task::Poll<std::io::Result<()>> {
         #[cfg(unix)]
         {
-            // 注意：expectrl库的Session类型可能没有直接实现AsyncRead
-            // 这里我们返回一个错误，表示尚未实现
-            std::task::Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "AsyncRead not implemented for expectrl-pty"
-            )))
+            let this = self.get_mut();
+            let mut session = this.session.lock().unwrap();
+            
+            // 直接委托给Session的AsyncRead实现
+            tokio::io::AsyncRead::poll_read(
+                std::pin::Pin::new(&mut *session),
+                cx,
+                buf
+            )
         }
         
         #[cfg(not(unix))]
@@ -98,12 +126,15 @@ impl tokio::io::AsyncWrite for ExpectrlPty {
     ) -> std::task::Poll<Result<usize, std::io::Error>> {
         #[cfg(unix)]
         {
-            // 注意：expectrl库的Session类型可能没有直接实现AsyncWrite
-            // 这里我们返回一个错误，表示尚未实现
-            std::task::Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "AsyncWrite not implemented for expectrl-pty"
-            )))
+            let this = self.get_mut();
+            let mut session = this.session.lock().unwrap();
+            
+            // 直接委托给Session的AsyncWrite实现
+            tokio::io::AsyncWrite::poll_write(
+                std::pin::Pin::new(&mut *session),
+                cx,
+                buf
+            )
         }
         
         #[cfg(not(unix))]
@@ -121,12 +152,14 @@ impl tokio::io::AsyncWrite for ExpectrlPty {
     ) -> std::task::Poll<Result<(), std::io::Error>> {
         #[cfg(unix)]
         {
-            // 注意：expectrl库的Session类型可能没有直接实现AsyncWrite
-            // 这里我们返回一个错误，表示尚未实现
-            std::task::Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "AsyncWrite not implemented for expectrl-pty"
-            )))
+            let this = self.get_mut();
+            let mut session = this.session.lock().unwrap();
+            
+            // 直接委托给Session的AsyncWrite实现
+            tokio::io::AsyncWrite::poll_flush(
+                std::pin::Pin::new(&mut *session),
+                cx
+            )
         }
         
         #[cfg(not(unix))]
@@ -144,12 +177,14 @@ impl tokio::io::AsyncWrite for ExpectrlPty {
     ) -> std::task::Poll<Result<(), std::io::Error>> {
         #[cfg(unix)]
         {
-            // 注意：expectrl库的Session类型可能没有直接实现AsyncWrite
-            // 这里我们返回一个错误，表示尚未实现
-            std::task::Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "AsyncWrite not implemented for expectrl-pty"
-            )))
+            let this = self.get_mut();
+            let mut session = this.session.lock().unwrap();
+            
+            // 直接委托给Session的AsyncWrite实现
+            tokio::io::AsyncWrite::poll_shutdown(
+                std::pin::Pin::new(&mut *session),
+                cx
+            )
         }
         
         #[cfg(not(unix))]
@@ -178,14 +213,12 @@ impl PtyFactory for ExpectrlPtyFactory {
                 PtyError::SpawnFailed(e.to_string())
             })?;
             
-            // 使用动态类型来存储会话
-            let session_box: Box<dyn std::any::Any + Send + Sync> = Box::new(session);
-            
-            // PID初始化为None，因为expectrl库可能不直接提供PID访问
+            // 尝试获取PID
+            // 注意：expectrl库的Session可能没有直接的pid方法
             let pid = None;
             
             Ok(Box::new(ExpectrlPty {
-                session: Mutex::new(session_box),
+                session: Mutex::new(session),
                 pid,
                 child_exited: false,
             }))

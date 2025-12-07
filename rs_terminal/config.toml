@@ -13,7 +13,7 @@ http_port = 8080
 webtransport_port = 8082
 
 # PTY implementation to use (options: "tokio_process", "portable_pty")
-pty_implementation = "tokio_process"
+pty_implementation = "portable_pty"
 
 # Default shell configuration (used as fallback for all shells)
 [default_shell_config]
