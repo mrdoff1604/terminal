@@ -8,7 +8,9 @@ edition = "2024"
 tokio = { version = "~1.40", features = ["full", "rt-multi-thread", "signal"] }
 
 # 跨平台 PTY 库
+tokio-pty-process = { version = "~0.4", optional = true }
 portable-pty = { version = "~0.9", optional = true }
+pty-process = { version = "~0.3", optional = true }
 
 # Web框架与WebSocket
 axum = { version = "~0.7", features = ["ws"] }
@@ -48,9 +50,11 @@ serde_json = "~1.0"
 tower-http = { version = "~0.5", features = ["cors"] }
 
 [features]
-default = ["portable-pty"]
-portable-pty = ["dep:portable-pty"]
+default = ["tokio-process"]
 tokio-process = []
+tokio-pty-process = ["dep:tokio-pty-process"]
+portable-pty = ["dep:portable-pty"]
+pty-process = ["dep:pty-process"]
 
 [dev-dependencies]
 tokio = { version = "~1.40", features = ["full"] }
