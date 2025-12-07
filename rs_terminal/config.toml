@@ -1,7 +1,7 @@
 # rs_terminal configuration file
 
 # Default shell type to use
-default_shell_type = "powershell"
+default_shell_type = "bash"
 
 # Session timeout in milliseconds (30 minutes)
 session_timeout = 1800000
@@ -16,7 +16,7 @@ environment.TERM = "xterm-256color"
 # Shell configurations for specific shell types
 [shells.bash]
 # Bash shell configuration
-command = ["bash", "-i"]
+command = ["bash", "-l"]
 environment.TERM = "xterm-256color"
 environment.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 

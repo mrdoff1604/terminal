@@ -48,8 +48,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/", get(|| async { "Waylon Terminal - Rust Backend" }))
         .route("/health", get(handlers::rest::health_check))
         
-        // WebSocket endpoint for terminal communication
+        // WebSocket endpoints for terminal communication
+        // Support both /ws and /ws/:session_id formats
         .route("/ws", get(handlers::websocket::websocket_handler))
+        .route("/ws/:session_id", get(handlers::websocket::websocket_handler_with_id))
         
         // REST API endpoints for session management
         .nest("/api", api_routes())
