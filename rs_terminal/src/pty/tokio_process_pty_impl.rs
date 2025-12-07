@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tracing::{info, error};
+use tracing::{info, error, debug};
 
 /// 基于 tokio-process 的 PTY 实现
 /// 使用标准的进程 I/O，不依赖 Unix 特定的 PTY API，跨平台兼容
@@ -19,10 +19,10 @@ impl TokioProcessPty {
     pub fn new(config: &PtyConfig) -> Result<Self, PtyError> {
         info!("TokioProcessPty: Creating PTY with command: {:?}, args: {:?}", config.command, config.args);
         
-        // 构建命令
+        // 构建命令 - 完全遵循配置文件，不添加任何硬编码参数
         let mut cmd = tokio::process::Command::new(&config.command);
         
-        // 添加参数
+        // 添加配置文件中指定的参数
         for arg in &config.args {
             cmd.arg(arg);
         }
@@ -33,7 +33,7 @@ impl TokioProcessPty {
             info!("TokioProcessPty: Setting cwd to: {:?}", cwd);
         }
         
-        // 设置环境变量
+        // 设置环境变量 - 完全遵循配置文件，不添加任何硬编码环境变量
         for (key, value) in &config.env {
             cmd.env(key, value);
             if key == "PATH" || key == "TERM" {
@@ -44,7 +44,9 @@ impl TokioProcessPty {
         // 设置标准输入输出
         cmd.stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+            .stderr(std::process::Stdio::piped())
+            // 设置为新的进程组，避免受到信号影响
+            .kill_on_drop(true);
         
         // 生成子进程
         let mut child = cmd.spawn().map_err(|e| {
@@ -88,7 +90,76 @@ impl AsyncRead for TokioProcessPty {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
         let self_mut = self.get_mut();
-        Pin::new(&mut self_mut.stdout).poll_read(cx, buf)
+        
+        // 检查进程是否还活着
+        if self_mut.child_exited {
+            debug!("TokioProcessPty: Process has exited, returning EOF");
+            return Poll::Ready(Ok(()));
+        }
+        
+        // 添加调试日志
+        debug!("TokioProcessPty: Polling for read, buffer remaining: {}", buf.remaining());
+        
+        // 保存当前填充的长度，用于检查是否读取到数据
+        let initial_filled = buf.filled().len();
+        
+        // 1. 首先检查进程是否已退出
+        if let Ok(Some(status)) = self_mut.child.try_wait() {
+            debug!("TokioProcessPty: Child process exited with status: {:?}", status);
+            self_mut.child_exited = true;
+            return Poll::Ready(Ok(()));
+        }
+        
+        // 2. 尝试从 stdout 读取
+        let stdout_result = Pin::new(&mut self_mut.stdout).poll_read(cx, buf);
+        
+        match stdout_result {
+            Poll::Ready(Ok(())) => {
+                let bytes_read = buf.filled().len() - initial_filled;
+                if bytes_read > 0 {
+                    debug!("TokioProcessPty: Read {} bytes from stdout", bytes_read);
+                    let data = &buf.filled()[initial_filled..];
+                    debug!("TokioProcessPty: Read data from stdout: {}", String::from_utf8_lossy(data));
+                }
+                return Poll::Ready(Ok(()));
+            }
+            Poll::Ready(Err(e)) => {
+                error!("TokioProcessPty: Error reading from stdout: {}", e);
+                // 继续尝试从 stderr 读取
+            }
+            Poll::Pending => {
+                debug!("TokioProcessPty: stdout read pending");
+            }
+        }
+        
+        // 3. 尝试从 stderr 读取
+        let stderr_result = Pin::new(&mut self_mut.stderr).poll_read(cx, buf);
+        
+        match stderr_result {
+            Poll::Ready(Ok(())) => {
+                let bytes_read = buf.filled().len() - initial_filled;
+                if bytes_read > 0 {
+                    debug!("TokioProcessPty: Read {} bytes from stderr", bytes_read);
+                    let data = &buf.filled()[initial_filled..];
+                    debug!("TokioProcessPty: Read data from stderr: {}", String::from_utf8_lossy(data));
+                }
+                return Poll::Ready(Ok(()));
+            }
+            Poll::Ready(Err(e)) => {
+                error!("TokioProcessPty: Error reading from stderr: {}", e);
+                // 检查进程是否已退出
+                if let Ok(Some(status)) = self_mut.child.try_wait() {
+                    debug!("TokioProcessPty: Child process exited with status: {:?}", status);
+                    self_mut.child_exited = true;
+                    return Poll::Ready(Ok(()));
+                }
+                return Poll::Ready(Err(e));
+            }
+            Poll::Pending => {
+                debug!("TokioProcessPty: stderr read pending, no data available");
+                return Poll::Pending;
+            }
+        }
     }
 }
 
@@ -100,7 +171,27 @@ impl AsyncWrite for TokioProcessPty {
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
         let self_mut = self.get_mut();
-        Pin::new(&mut self_mut.stdin).poll_write(cx, buf)
+        
+        // 添加调试日志
+        debug!("TokioProcessPty: Polling for write, buffer length: {}", buf.len());
+        debug!("TokioProcessPty: Writing data: {:?}", String::from_utf8_lossy(buf));
+        
+        // 委托给 stdin 的 poll_write
+        let result = Pin::new(&mut self_mut.stdin).poll_write(cx, buf);
+        
+        match &result {
+            Poll::Ready(Ok(n)) => {
+                debug!("TokioProcessPty: Wrote {} bytes to stdin", n);
+            }
+            Poll::Ready(Err(e)) => {
+                error!("TokioProcessPty: Error writing to stdin: {}", e);
+            }
+            Poll::Pending => {
+                debug!("TokioProcessPty: Write pending, unable to write");
+            }
+        }
+        
+        result
     }
 
     fn poll_flush(
@@ -108,7 +199,18 @@ impl AsyncWrite for TokioProcessPty {
         cx: &mut Context<'_>,
     ) -> Poll<std::io::Result<()>> {
         let self_mut = self.get_mut();
-        Pin::new(&mut self_mut.stdin).poll_flush(cx)
+        
+        // 添加调试日志
+        debug!("TokioProcessPty: Polling for flush");
+        
+        // 委托给 stdin 的 poll_flush
+        let result = Pin::new(&mut self_mut.stdin).poll_flush(cx);
+        
+        if let Poll::Ready(Err(e)) = &result {
+            error!("TokioProcessPty: Error flushing stdin: {}", e);
+        }
+        
+        result
     }
 
     fn poll_shutdown(
@@ -116,7 +218,18 @@ impl AsyncWrite for TokioProcessPty {
         cx: &mut Context<'_>,
     ) -> Poll<std::io::Result<()>> {
         let self_mut = self.get_mut();
-        Pin::new(&mut self_mut.stdin).poll_shutdown(cx)
+        
+        // 添加调试日志
+        debug!("TokioProcessPty: Polling for shutdown");
+        
+        // 委托给 stdin 的 poll_shutdown
+        let result = Pin::new(&mut self_mut.stdin).poll_shutdown(cx);
+        
+        if let Poll::Ready(Err(e)) = &result {
+            error!("TokioProcessPty: Error shutting down stdin: {}", e);
+        }
+        
+        result
     }
 }
 
@@ -150,7 +263,10 @@ impl AsyncPty for TokioProcessPty {
                 self.child_exited = true;
                 Ok(Some(status))
             },
-            Ok(None) => Ok(None),
+            Ok(None) => {
+                debug!("TokioProcessPty: Child process still running");
+                Ok(None)
+            },
             Err(e) => {
                 error!("TokioProcessPty: Failed to check child status: {}", e);
                 Err(PtyError::Other(e.to_string()))
