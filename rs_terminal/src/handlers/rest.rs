@@ -9,10 +9,7 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::{
-    api::dto::{
-        CreateSessionRequest, ResizeTerminalRequest, SuccessResponse,
-        TerminalSession,
-    },
+    api::dto::{CreateSessionRequest, ResizeTerminalRequest, SuccessResponse, TerminalSession},
     app_state::{AppState, ConnectionType, Session},
 };
 

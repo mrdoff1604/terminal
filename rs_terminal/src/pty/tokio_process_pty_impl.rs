@@ -274,8 +274,6 @@ impl AsyncPty for TokioProcessPty {
 /// 基于 tokio-process 的 PTY 工厂
 pub struct TokioProcessPtyFactory;
 
-
-
 #[async_trait]
 impl PtyFactory for TokioProcessPtyFactory {
     async fn create(&self, config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {

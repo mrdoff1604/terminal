@@ -1,3 +1,5 @@
+#[cfg(feature = "portable-pty")]
+mod portable_pty_impl;
 /// PTY (Pseudo Terminal) handling for Waylon Terminal
 /// This module provides a trait abstraction for different PTY implementations
 /// with a focus on pure async operations
@@ -5,16 +7,14 @@ mod pty_trait;
 mod tokio_process_pty_impl;
 #[cfg(feature = "tokio-pty-process")]
 mod tokio_pty_process_pty_impl;
-#[cfg(feature = "portable-pty")]
-mod portable_pty_impl;
 
 // Export all public types and traits
+#[cfg(feature = "portable-pty")]
+pub use portable_pty_impl::PortablePtyFactory;
 pub use pty_trait::*;
 pub use tokio_process_pty_impl::TokioProcessPtyFactory;
 #[cfg(feature = "tokio-pty-process")]
 pub use tokio_pty_process_pty_impl::TokioPtyProcessPtyFactory;
-#[cfg(feature = "portable-pty")]
-pub use portable_pty_impl::PortablePtyFactory;
 
 use tracing::info;
 

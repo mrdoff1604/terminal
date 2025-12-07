@@ -21,9 +21,11 @@ impl PortablePty {
             "PortablePty: Creating PTY with command: {:?}, args: {:?}",
             config.command, config.args
         );
-        
+
         // 目前返回一个错误，因为完整实现需要portable-pty库
-        Err(PtyError::Other("PortablePty implementation is not available".to_string()))
+        Err(PtyError::Other(
+            "PortablePty implementation is not available".to_string(),
+        ))
     }
 }
 
@@ -50,10 +52,7 @@ impl AsyncWrite for PortablePty {
         Poll::Ready(Ok(0))
     }
 
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         // 简单返回Ok，不执行任何实际刷新
         Poll::Ready(Ok(()))
     }

@@ -1,12 +1,12 @@
 use axum::{
+    extract::Path,
     extract::State,
     extract::ws::{WebSocket, WebSocketUpgrade},
-    extract::Path,
     response::IntoResponse,
 };
 
-use uuid::Uuid;
 use crate::{app_state::AppState, protocol::WebSocketConnection, service::handle_terminal_session};
+use uuid::Uuid;
 
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,

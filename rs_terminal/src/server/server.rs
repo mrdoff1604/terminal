@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use axum::{
     Router,
     http::Method,
-    routing::{get, post, delete},
+    routing::{delete, get, post},
 };
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
@@ -83,7 +83,10 @@ fn api_routes() -> Router<AppState> {
 }
 
 /// Run the HTTP server
-pub async fn run_server(router: Router, config: &crate::config::TerminalConfig) -> Result<(), std::io::Error> {
+pub async fn run_server(
+    router: Router,
+    config: &crate::config::TerminalConfig,
+) -> Result<(), std::io::Error> {
     let addr = SocketAddr::from(([0, 0, 0, 0], config.http_port));
     let webtransport_addr = SocketAddr::from(([0, 0, 0, 0], config.webtransport_port));
 

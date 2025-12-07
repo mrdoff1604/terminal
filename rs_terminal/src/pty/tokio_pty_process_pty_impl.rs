@@ -165,20 +165,17 @@ impl AsyncWrite for TokioPtyProcessPty {
 
         // 向 stdin 写入数据
         let result = Pin::new(&mut self_mut.stdin).poll_write(cx, buf);
-        
+
         if let Poll::Ready(Ok(n)) = &result {
             debug!("TokioPtyProcessPty: Wrote {} bytes to stdin", n);
         }
-        
+
         result
     }
 
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), std::io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         let self_mut = self.get_mut();
-        
+
         // 刷新 stdin 写入缓冲区
         Pin::new(&mut self_mut.stdin).poll_flush(cx)
     }
@@ -188,7 +185,7 @@ impl AsyncWrite for TokioPtyProcessPty {
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), std::io::Error>> {
         let self_mut = self.get_mut();
-        
+
         // 关闭 stdin 写入端
         Pin::new(&mut self_mut.stdin).poll_shutdown(cx)
     }

@@ -1,6 +1,6 @@
+use serde::Serialize;
 /// Terminal session implementation
 use std::time::SystemTime;
-use serde::Serialize;
 
 /// Terminal session state
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -53,10 +53,10 @@ pub struct Session {
 
     /// Connection type
     pub connection_type: ConnectionType,
-    
+
     /// Session creation timestamp (UNIX epoch in seconds)
     pub created_at: u64,
-    
+
     /// Session last updated timestamp (UNIX epoch in seconds)
     pub updated_at: u64,
 }
