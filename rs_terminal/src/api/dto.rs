@@ -1,6 +1,5 @@
 /// Data Transfer Objects (DTOs) for REST API endpoints
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 /// Request DTO for creating a new terminal session
 #[derive(Debug, Deserialize, Serialize)]

@@ -6,6 +6,12 @@ default_shell_type = "bash"
 # Session timeout in milliseconds (30 minutes)
 session_timeout = 1800000
 
+# HTTP server port
+http_port = 8080
+
+# WebTransport server port
+webtransport_port = 8082
+
 # Default shell configuration (used as fallback for all shells)
 [default_shell_config]
 size.columns = 80

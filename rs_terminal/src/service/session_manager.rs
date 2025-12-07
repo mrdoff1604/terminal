@@ -1,6 +1,6 @@
 /// Session manager for managing terminal sessions
 use crate::app_state::AppState;
-use tracing::{error, info};
+
 
 /// Session manager responsible for managing terminal sessions
 pub struct SessionManager {

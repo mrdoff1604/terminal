@@ -1,7 +1,6 @@
-use serde::{Deserialize, Serialize};
 /// Terminal session implementation
-use std::sync::Arc;
 use std::time::SystemTime;
+use serde::Serialize;
 
 /// Terminal session state
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -29,7 +28,7 @@ pub enum ConnectionType {
 #[derive(Debug, Clone, Serialize)]
 pub struct Session {
     /// Unique session ID
-    pub session_id: String,
+    pub id: String,
 
     /// User ID associated with this session
     pub user_id: String,
@@ -54,10 +53,10 @@ pub struct Session {
 
     /// Connection type
     pub connection_type: ConnectionType,
-
+    
     /// Session creation timestamp (UNIX epoch in seconds)
     pub created_at: u64,
-
+    
     /// Session last updated timestamp (UNIX epoch in seconds)
     pub updated_at: u64,
 }
@@ -65,7 +64,7 @@ pub struct Session {
 impl Session {
     /// Create a new session with the given parameters
     pub fn new(
-        session_id: String,
+        id: String,
         user_id: String,
         title: Option<String>,
         working_directory: Option<String>,
@@ -76,11 +75,13 @@ impl Session {
     ) -> Self {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            // In practice, this should never fail as current time is always after UNIX epoch
+            // Fallback to 0 if for some reason it does fail
+            .unwrap_or_default()
             .as_secs();
 
         Self {
-            session_id,
+            id,
             user_id,
             title,
             status: SessionStatus::Created,
@@ -100,7 +101,7 @@ impl Session {
         self.rows = rows;
         self.updated_at = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
     }
 
@@ -109,7 +110,7 @@ impl Session {
         self.status = status;
         self.updated_at = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
     }
 }

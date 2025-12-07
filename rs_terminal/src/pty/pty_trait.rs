@@ -1,8 +1,6 @@
 use async_trait::async_trait;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use thiserror::Error;
-use tokio::io::{self, AsyncRead, AsyncWrite, ReadBuf};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 // ================ 配置与错误类型 ================
 

@@ -1,4 +1,4 @@
-use tracing_subscriber;
+
 
 /// Initialize logging configuration
 pub fn init_logging() {

@@ -25,12 +25,11 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     let message_handler = MessageHandler::new();
 
     // Check if session already exists in state (created via REST API)
-    let session = match state.get_session(&conn_id).await {
+    match state.get_session(&conn_id).await {
         Some(mut session) => {
             // Update session status to active
             session.set_status(SessionStatus::Active);
-            state.update_session(session.clone()).await;
-            session
+            state.update_session(session).await;
         }
         None => {
             // Get default shell command from config
@@ -50,8 +49,7 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
                     crate::protocol::ConnectionType::WebTransport => ConnectionType::WebTransport,
                 },
             );
-            state.add_session(session.clone()).await;
-            session
+            state.add_session(session).await;
         }
     };
 
@@ -75,7 +73,6 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
 
     // Main session loop - handle both incoming messages and PTY output directly
     let mut pty_buffer = [0u8; 4096];
-    let mut should_close = false;
 
     loop {
         select! {
@@ -87,7 +84,6 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
                         match message_handler.handle_message(msg, &mut connection, &mut pty, &conn_id).await {
                             Ok(close) => {
                                 if close {
-                                    should_close = true;
                                     break;
                                 }
                             },

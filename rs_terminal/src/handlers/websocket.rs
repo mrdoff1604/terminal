@@ -1,10 +1,11 @@
 use axum::{
-    extract::Path,
     extract::State,
     extract::ws::{WebSocket, WebSocketUpgrade},
+    extract::Path,
     response::IntoResponse,
 };
 
+use uuid::Uuid;
 use crate::{app_state::AppState, protocol::WebSocketConnection, service::handle_terminal_session};
 
 pub async fn websocket_handler(
@@ -25,10 +26,8 @@ pub async fn websocket_handler_with_id(
 }
 
 pub async fn handle_socket(socket: WebSocket, state: AppState) {
-    // Generate session ID if none is provided
-    let sessions = state.sessions.lock().await;
-    let session_id = format!("session-{}", sessions.len());
-    drop(sessions);
+    // Generate session ID if none is provided using UUID for better uniqueness
+    let session_id = Uuid::new_v4().to_string();
 
     handle_socket_with_id(socket, session_id, state).await;
 }

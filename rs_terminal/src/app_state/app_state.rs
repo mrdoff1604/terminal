@@ -26,7 +26,7 @@ impl AppState {
     /// Add a new session to the state
     pub async fn add_session(&self, session: Session) {
         let mut sessions = self.sessions.lock().await;
-        sessions.insert(session.session_id.clone(), session);
+        sessions.insert(session.id.clone(), session);
     }
 
     /// Get a session by ID
@@ -44,8 +44,8 @@ impl AppState {
     /// Update an existing session
     pub async fn update_session(&self, session: Session) -> bool {
         let mut sessions = self.sessions.lock().await;
-        if sessions.contains_key(&session.session_id) {
-            sessions.insert(session.session_id.clone(), session);
+        if sessions.contains_key(&session.id) {
+            sessions.insert(session.id.clone(), session);
             true
         } else {
             false

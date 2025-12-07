@@ -3,8 +3,8 @@ use std::net::SocketAddr;
 
 use axum::{
     Router,
-    http::{self, Method},
-    routing::{delete, get, post},
+    http::Method,
+    routing::{get, post, delete},
 };
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
@@ -14,7 +14,7 @@ use crate::{app_state::AppState, handlers};
 
 /// Start WebTransport server in a separate task
 pub fn start_webtransport_service(state: AppState) {
-    let webtransport_addr = SocketAddr::from(([0, 0, 0, 0], 8082));
+    let webtransport_addr = SocketAddr::from(([0, 0, 0, 0], state.config.webtransport_port));
     let webtransport_state = state.clone();
     tokio::spawn(async move {
         crate::handlers::webtransport::start_webtransport_server(
@@ -83,11 +83,11 @@ fn api_routes() -> Router<AppState> {
 }
 
 /// Run the HTTP server
-pub async fn run_server(router: Router) {
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    let webtransport_addr = SocketAddr::from(([0, 0, 0, 0], 8082));
+pub async fn run_server(router: Router, config: &crate::config::TerminalConfig) -> Result<(), std::io::Error> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.http_port));
+    let webtransport_addr = SocketAddr::from(([0, 0, 0, 0], config.webtransport_port));
 
-    let listener = TcpListener::bind(addr).await.unwrap();
+    let listener = TcpListener::bind(addr).await?;
 
     info!("Server running on http://{}", addr);
     info!("WebSocket server available at ws://{}/ws", addr);
@@ -96,5 +96,6 @@ pub async fn run_server(router: Router) {
         webtransport_addr
     );
 
-    axum::serve(listener, router).await.unwrap();
+    axum::serve(listener, router).await?;
+    Ok(())
 }

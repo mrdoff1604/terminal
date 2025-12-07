@@ -4,7 +4,7 @@ use crate::{
     protocol::{TerminalConnection, TerminalMessage},
     pty::AsyncPty,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 
 /// Message handler responsible for processing terminal messages

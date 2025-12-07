@@ -11,6 +11,12 @@ pub struct TerminalConfig {
     /// Session timeout in milliseconds (default: 30 minutes)
     pub session_timeout: u64,
 
+    /// HTTP server port
+    pub http_port: u16,
+
+    /// WebTransport server port
+    pub webtransport_port: u16,
+
     /// Default shell configuration (used as fallback for all shells)
     pub default_shell_config: DefaultShellConfig,
 

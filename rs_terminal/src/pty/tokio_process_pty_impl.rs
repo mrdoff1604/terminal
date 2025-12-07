@@ -274,11 +274,7 @@ impl AsyncPty for TokioProcessPty {
 /// 基于 tokio-process 的 PTY 工厂
 pub struct TokioProcessPtyFactory;
 
-impl Default for TokioProcessPtyFactory {
-    fn default() -> Self {
-        Self {}
-    }
-}
+
 
 #[async_trait]
 impl PtyFactory for TokioProcessPtyFactory {

@@ -6,7 +6,7 @@ mod tokio_process_pty_impl;
 
 // Export all public types and traits
 pub use pty_trait::*;
-pub use tokio_process_pty_impl::{TokioProcessPty, TokioProcessPtyFactory};
+pub use tokio_process_pty_impl::TokioProcessPtyFactory;
 
 /// Create a new PTY instance using configuration from the application config
 pub async fn create_pty_from_config(
@@ -73,8 +73,8 @@ pub async fn create_pty_from_config(
 
     // Create PTY config
     let pty_config = PtyConfig {
-        command: command,
-        args: args,
+        command,
+        args,
         cols: terminal_size.columns,
         rows: terminal_size.rows,
         env: environment,
@@ -82,7 +82,7 @@ pub async fn create_pty_from_config(
     };
 
     // 使用Tokio Process PTY实现
-    let factory = TokioProcessPtyFactory::default();
+    let factory = TokioProcessPtyFactory;
     let pty = factory.create(&pty_config).await?;
     Ok(pty)
 }
@@ -90,7 +90,8 @@ pub async fn create_pty_from_config(
 /// Create a new PTY instance with custom configuration
 pub async fn create_pty_with_config(config: &PtyConfig) -> Result<Box<dyn AsyncPty>, PtyError> {
     // 使用Tokio Process PTY实现
-    TokioProcessPtyFactory::default().create(config).await
+    let factory = TokioProcessPtyFactory;
+    factory.create(config).await
 }
 
 /// Create a new PTY instance using a specific factory

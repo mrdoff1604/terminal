@@ -1,6 +1,6 @@
-mod api;
 /// Main entry point for Waylon Terminal Rust backend
 // Import modules
+mod api;
 mod app_state;
 mod config;
 mod handlers;
@@ -31,12 +31,15 @@ async fn main() {
     };
 
     // Create application state with configuration
-    let app_state = AppState::new(config);
+    let app_state = AppState::new(config.clone());
 
     // Start WebTransport service
     start_webtransport_service(app_state.clone());
 
     // Build router and run server
     let app = build_router(app_state);
-    run_server(app).await;
+    if let Err(e) = run_server(app, &config).await {
+        eprintln!("Failed to run server: {}", e);
+        std::process::exit(1);
+    }
 }

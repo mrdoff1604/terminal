@@ -12,4 +12,3 @@ pub use error::ServiceError;
 pub use message_handler::MessageHandler;
 pub use pty_manager::PtyManager;
 pub use session_handler::handle_terminal_session;
-pub use session_manager::SessionManager;

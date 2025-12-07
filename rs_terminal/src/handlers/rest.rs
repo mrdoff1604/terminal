@@ -2,20 +2,18 @@ use axum::response::IntoResponse;
 /// REST API handlers for terminal session management
 use axum::{
     extract::{Json, Path, State},
-    http::{Response, StatusCode},
-    routing::{delete, get, post},
+    http::StatusCode,
 };
 use serde_json::json;
-use tracing::{error, info};
+use tracing::info;
 use uuid::Uuid;
 
 use crate::{
     api::dto::{
-        CreateSessionRequest, ErrorResponse, ResizeTerminalRequest, SuccessResponse,
+        CreateSessionRequest, ResizeTerminalRequest, SuccessResponse,
         TerminalSession,
     },
     app_state::{AppState, ConnectionType, Session},
-    config::ResolvedShellConfig,
 };
 
 /// Create a new terminal session
@@ -67,7 +65,7 @@ pub async fn create_session(
 
     // Map to API response DTO with correct field names
     let response = TerminalSession {
-        id: session.session_id, // Use 'id' instead of 'session_id' to match frontend expectations
+        id: session.id, // Use 'id' instead of 'session_id' to match frontend expectations
         user_id: session.user_id,
         title: session.title,
         status: format!("{:?}", session.status).to_lowercase(),
@@ -95,7 +93,7 @@ pub async fn get_all_sessions(State(state): State<AppState>) -> impl IntoRespons
     let response_sessions: Vec<TerminalSession> = sessions
         .into_iter()
         .map(|session| TerminalSession {
-            id: session.session_id,
+            id: session.id,
             user_id: session.user_id,
             title: session.title,
             status: format!("{:?}", session.status).to_lowercase(),
@@ -124,7 +122,7 @@ pub async fn get_session(
             // Return success as JSON value with correct field names
             let success_response = json!(
                 {
-                    "id": session.session_id, // Use 'id' instead of 'session_id'
+                    "id": session.id, // Use 'id' instead of 'session_id'
                     "userId": session.user_id, // Use camelCase for all fields
                     "title": session.title,
                     "status": format!("{:?}", session.status).to_lowercase(),
@@ -221,7 +219,7 @@ pub async fn terminate_session(
 
     // Remove session from app state
     match state.remove_session(&session_id).await {
-        Some(session) => {
+        Some(_session) => {
             // Return success response
             let success_response = json!(
                 {
