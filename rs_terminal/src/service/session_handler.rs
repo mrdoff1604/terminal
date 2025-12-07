@@ -3,8 +3,8 @@ use tokio::select;
 use tokio::io::AsyncReadExt;
 use tracing::{error, info};
 
-use crate::{app_state::AppState, protocol::TerminalConnection};
-use super::{SessionManager, PtyManager, MessageHandler};
+use crate::{app_state::{AppState, Session, SessionStatus, ConnectionType}, protocol::TerminalConnection};
+use super::{PtyManager, MessageHandler};
 
 /// Handle a terminal session using the TerminalConnection trait
 pub async fn handle_terminal_session(mut connection: impl TerminalConnection, state: AppState) {
@@ -18,12 +18,41 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
     );
 
     // Initialize managers
-    let session_manager = SessionManager::new(state.clone());
     let pty_manager = PtyManager::new();
     let message_handler = MessageHandler::new();
 
-    // Add session to state
-    session_manager.add_session(&conn_id).await;
+    // Check if session already exists in state (created via REST API)
+    let session = match state.get_session(&conn_id).await {
+        Some(mut session) => {
+            // Update session status to active
+            session.set_status(SessionStatus::Active);
+            state.update_session(session.clone()).await;
+            session
+        },
+        None => {
+            // Get default shell command from config
+            let shell_type = state.config.default_shell_type.clone();
+            
+            // Create a new session if it doesn't exist
+            let session = Session::new(
+                conn_id.clone(),
+                "anonymous".to_string(), // Default to anonymous user
+                None,
+                None,
+                shell_type,
+                state.config.default_shell_config.size.columns,
+                state.config.default_shell_config.size.rows,
+                match conn_type {
+                    crate::protocol::ConnectionType::WebSocket => ConnectionType::WebSocket,
+                    crate::protocol::ConnectionType::WebTransport => ConnectionType::WebTransport,
+                },
+            );
+            state.add_session(session.clone()).await;
+            session
+        }
+    };
+
+    info!("Session status updated to active: {}", conn_id);
 
     // Create PTY for this session using application configuration
     let mut pty = match pty_manager.create_pty_from_config(&state.config).await {
@@ -33,8 +62,8 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
             let error_msg = format!("Error: Failed to create terminal session: {}", e);
             let _ = connection.send_text(&error_msg).await;
             let _ = connection.close().await;
-            // Clean up session
-            session_manager.remove_session(&conn_id).await;
+            // Clean up session if it was added
+            state.remove_session(&conn_id).await;
             return;
         }
     };
@@ -114,8 +143,15 @@ pub async fn handle_terminal_session(mut connection: impl TerminalConnection, st
         error!("Failed to kill PTY process for session {}: {}", conn_id, e);
     }
 
-    // Remove session from state
-    session_manager.remove_session(&conn_id).await;
+    // Update session status to terminated
+    if let Some(mut session) = state.get_session(&conn_id).await {
+        session.set_status(SessionStatus::Terminated);
+        state.update_session(session.clone()).await;
+    }
+    
+    // Remove session from state after a short delay (allowing time for cleanup)
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    state.remove_session(&conn_id).await;
 
     info!("Terminal session {} closed", conn_id);
 }

@@ -15,29 +15,8 @@ impl SessionManager {
         }
     }
 
-    /// Add a new session to the state
-    pub async fn add_session(&self, session_id: &str) {
-        let mut sessions = self.app_state.sessions.lock().await;
-        sessions.push(session_id.into());
-        info!("Added session: {}", session_id);
-    }
-
-    /// Remove a session from the state
-    pub async fn remove_session(&self, session_id: &str) {
-        let mut sessions = self.app_state.sessions.lock().await;
-        let initial_len = sessions.len();
-        sessions.retain(|id| id.as_ref() != session_id);
-        
-        if sessions.len() < initial_len {
-            info!("Removed session: {}", session_id);
-        } else {
-            error!("Session not found for removal: {}", session_id);
-        }
-    }
-
     /// Get the current number of sessions
     pub async fn session_count(&self) -> usize {
-        let sessions = self.app_state.sessions.lock().await;
-        sessions.len()
+        self.app_state.session_count().await
     }
 }

@@ -1,6 +1,7 @@
 /// Main entry point for Waylon Terminal Rust backend
 // Import modules
 mod app_state;
+mod api;
 mod config;
 mod handlers;
 mod protocol;

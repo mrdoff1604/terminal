@@ -1,11 +1,11 @@
 /// Server implementation for Waylon Terminal Rust backend
 use std::net::SocketAddr;
 
-use axum::{Router, routing::get};
+use axum::{Router, routing::{get, post, delete}};
 use tokio::net::TcpListener;
 use tracing::info;
 
-use crate::{app_state::AppState, handlers::websocket};
+use crate::{app_state::AppState, handlers};
 
 /// Start WebTransport server in a separate task
 pub fn start_webtransport_service(state: AppState) {
@@ -23,9 +23,27 @@ pub fn start_webtransport_service(state: AppState) {
 /// Build the application router with routes
 pub fn build_router(state: AppState) -> Router {
     Router::new()
+        // Health check endpoint
         .route("/", get(|| async { "Waylon Terminal - Rust Backend" }))
-        .route("/ws", get(websocket::websocket_handler))
+        .route("/health", get(handlers::rest::health_check))
+        
+        // WebSocket endpoint for terminal communication
+        .route("/ws", get(handlers::websocket::websocket_handler))
+        
+        // REST API endpoints for session management
+        .nest("/api", api_routes())
         .with_state(state)
+}
+
+/// Build API routes for session management
+fn api_routes() -> Router<AppState> {
+    Router::new()
+        // Session management endpoints
+        .route("/sessions", post(handlers::rest::create_session))
+        .route("/sessions", get(handlers::rest::get_all_sessions))
+        .route("/sessions/:session_id", get(handlers::rest::get_session))
+        .route("/sessions/:session_id/resize", post(handlers::rest::resize_session))
+        .route("/sessions/:session_id", delete(handlers::rest::terminate_session))
 }
 
 /// Run the HTTP server
