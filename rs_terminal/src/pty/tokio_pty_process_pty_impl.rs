@@ -3,16 +3,14 @@ use async_trait::async_trait;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio::process::Command;
+use tokio_pty_process::{Command, PtyMaster};
 use tracing::{debug, error, info};
 
 /// 基于 tokio-pty-process 的 PTY 实现
 /// 提供真正的 PTY 支持，适用于 Unix-like 系统
 pub struct TokioPtyProcessPty {
-    stdin: tokio::process::ChildStdin,
-    stdout: tokio::process::ChildStdout,
-    stderr: tokio::process::ChildStderr,
     child: tokio::process::Child,
+    master: PtyMaster,
     child_exited: bool,
     cols: u16,
     rows: u16,
@@ -25,7 +23,7 @@ impl TokioPtyProcessPty {
             config.command, config.args
         );
 
-        // 构建命令 - 使用 tokio::process::Command
+        // 构建命令 - 使用 tokio-pty-process::Command
         let mut cmd = Command::new(&config.command);
 
         // 添加配置文件中指定的参数
@@ -47,41 +45,20 @@ impl TokioPtyProcessPty {
             }
         }
 
-        // 配置进程 I/O
-        let mut cmd = cmd
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+        // 设置 PTY 大小
+        cmd.size(config.cols, config.rows);
 
-        // 生成子进程
-        let mut child = cmd.spawn().map_err(|e| {
-            error!("TokioPtyProcessPty: Failed to spawn process: {}", e);
+        // 使用 tokio-pty-process 生成带 PTY 的子进程
+        let pty = cmd.spawn().map_err(|e| {
+            error!("TokioPtyProcessPty: Failed to spawn PTY process: {}", e);
             PtyError::SpawnFailed(e.to_string())
-        })?;
-
-        // 获取进程 I/O
-        let stdin = child.stdin.take().ok_or_else(|| {
-            error!("TokioPtyProcessPty: Failed to get stdin");
-            PtyError::SpawnFailed("Failed to get stdin".to_string())
-        })?;
-
-        let stdout = child.stdout.take().ok_or_else(|| {
-            error!("TokioPtyProcessPty: Failed to get stdout");
-            PtyError::SpawnFailed("Failed to get stdout".to_string())
-        })?;
-
-        let stderr = child.stderr.take().ok_or_else(|| {
-            error!("TokioPtyProcessPty: Failed to get stderr");
-            PtyError::SpawnFailed("Failed to get stderr".to_string())
         })?;
 
         info!("TokioPtyProcessPty: Successfully created PTY process");
 
         Ok(Self {
-            stdin,
-            stdout,
-            stderr,
-            child,
+            child: pty.child,
+            master: pty.master,
             child_exited: false,
             cols: config.cols,
             rows: config.rows,
@@ -105,44 +82,10 @@ impl AsyncRead for TokioPtyProcessPty {
                 status
             );
             self_mut.child_exited = true;
-            return Poll::Ready(Ok(()));
         }
 
-        // 首先尝试从 stdout 读取数据
-        let stdout_result = Pin::new(&mut self_mut.stdout).poll_read(cx, buf);
-
-        match stdout_result {
-            Poll::Ready(Ok(())) => {
-                // 从 stdout 读取到数据，返回结果
-                return Poll::Ready(Ok(()));
-            }
-            Poll::Ready(Err(e)) => {
-                // stdout 出错，尝试从 stderr 读取
-                error!("TokioPtyProcessPty: Error reading from stdout: {}", e);
-            }
-            Poll::Pending => {
-                // stdout 没有数据，尝试从 stderr 读取
-            }
-        }
-
-        // 从 stderr 读取数据
-        let stderr_result = Pin::new(&mut self_mut.stderr).poll_read(cx, buf);
-
-        match stderr_result {
-            Poll::Ready(Ok(())) => {
-                // 从 stderr 读取到数据，返回结果
-                return Poll::Ready(Ok(()));
-            }
-            Poll::Ready(Err(e)) => {
-                // stderr 出错，返回错误
-                error!("TokioPtyProcessPty: Error reading from stderr: {}", e);
-                return Poll::Ready(Err(e));
-            }
-            Poll::Pending => {
-                // 两个流都没有数据，返回 Pending
-                return Poll::Pending;
-            }
-        }
+        // 从 PTY master 读取数据
+        Pin::new(&mut self_mut.master).poll_read(cx, buf)
     }
 }
 
@@ -163,21 +106,18 @@ impl AsyncWrite for TokioPtyProcessPty {
             )));
         }
 
-        // 向 stdin 写入数据
-        let result = Pin::new(&mut self_mut.stdin).poll_write(cx, buf);
-
-        if let Poll::Ready(Ok(n)) = &result {
-            debug!("TokioPtyProcessPty: Wrote {} bytes to stdin", n);
-        }
-
-        result
+        // 向 PTY master 写入数据
+        Pin::new(&mut self_mut.master).poll_write(cx, buf)
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), std::io::Error>> {
         let self_mut = self.get_mut();
-
-        // 刷新 stdin 写入缓冲区
-        Pin::new(&mut self_mut.stdin).poll_flush(cx)
+        
+        // 刷新 PTY master 写入缓冲区
+        Pin::new(&mut self_mut.master).poll_flush(cx)
     }
 
     fn poll_shutdown(
@@ -185,9 +125,9 @@ impl AsyncWrite for TokioPtyProcessPty {
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), std::io::Error>> {
         let self_mut = self.get_mut();
-
-        // 关闭 stdin 写入端
-        Pin::new(&mut self_mut.stdin).poll_shutdown(cx)
+        
+        // 关闭 PTY master 写入端
+        Pin::new(&mut self_mut.master).poll_shutdown(cx)
     }
 }
 
@@ -200,6 +140,12 @@ impl AsyncPty for TokioPtyProcessPty {
             "TokioPtyProcessPty: Resizing PTY from {}x{} to {}x{}",
             self.cols, self.rows, cols, rows
         );
+
+        // 调整 PTY 大小
+        self.master.resize(cols, rows).map_err(|e| {
+            error!("TokioPtyProcessPty: Failed to resize PTY: {}", e);
+            PtyError::ResizeFailed(e.to_string())
+        })?;
 
         // 更新本地记录的大小
         self.cols = cols;

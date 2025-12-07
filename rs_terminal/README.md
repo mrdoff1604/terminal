@@ -1,218 +1,134 @@
-# Waylon Terminal - Rust Backend
+# rs_terminal
 
-A high-performance terminal server implementation built with Rust, providing low-latency terminal access through WebSocket and WebTransport protocols.
+A Rust-based terminal backend for Waylon Terminal, supporting multiple PTY implementations and WebSocket communication.
 
-## Project Overview
+## Features
 
-The Waylon Terminal Rust backend is a high-performance implementation of a terminal server that allows users to create and manage terminal sessions through a web interface. It provides RESTful APIs for session management and real-time communication via WebSocket and WebTransport protocols, with a focus on performance and reliability.
+- RESTful API for session management
+- WebSocket support for terminal communication
+- Multiple PTY implementations support
+- Cross-platform compatibility
+- Async programming with Tokio
+- Configurable via TOML file
 
-## System Architecture
+## PTY Implementations
 
-The system follows a modern Rust architecture with clear separation of concerns:
+rs_terminal supports multiple PTY implementations, which can be selected via the `config.toml` file:
 
-```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                                    API Layer                                     │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                  ┌────────────────┐                              │
-│                                  │  REST Routes   │                              │
-│                                  ├────────────────┘                              │
-│                                  │  WebSocket     │                              │
-│                                  ├────────────────┘                              │
-│                                  │  WebTransport  │                              │
-│                                  └────────────────┘                              │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                 Application Layer                                 │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                  ┌────────────────┐                              │
-│                                  │   Services     │                              │
-│                                  ├────────────────┘                              │
-│                                  │   Processes    │                              │
-│                                  ├────────────────┘                              │
-│                                  │   Handlers     │                              │
-│                                  └────────────────┘                              │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                  Domain Layer                                    │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                  ┌────────────────┐                              │
-│                                  │  Models        │                              │
-│                                  ├────────────────┘                              │
-│                                  │  Repository    │                              │
-│                                  └────────────────┘                              │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                               Infrastructure Layer                               │
-├───────────────────────────────────────────────────────────────────────────────────┤
-│                                  ┌────────────────┐                              │
-│                                  │  Config        │                              │
-│                                  ├────────────────┘                              │
-│                                  │  Logging       │                              │
-│                                  ├────────────────┘                              │
-│                                  │  PTY           │                              │
-│                                  └────────────────┘                              │
-└───────────────────────────────────────────────────────────────────────────────────┘
+1. **tokio_process** - Default implementation using standard process I/O, cross-platform compatible
+2. **tokio_pty_process** - Real PTY support for Unix-like systems using `tokio-pty-process` library
+3. **portable_pty** - Cross-platform PTY support using `portable-pty` library
+
+## Getting Started
+
+### Prerequisites
+
+- Rust 1.65 or newer
+- Cargo package manager
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/waylondev/terminal.git
+cd terminal/rs_terminal
 ```
 
-## Core Features
+2. Build with default features:
 
-### Session Management
-- Create, retrieve, update, and delete terminal sessions
-- Support for multiple terminal sessions per user
-- Session lifecycle management
-- Session activity tracking
+```bash
+cargo build
+```
 
-### Terminal Operations
-- Real-time terminal communication
-- Terminal resizing
-- Shell type selection
-- Working directory configuration
+3. Build with specific PTY implementation features:
 
-### Communication Protocols
-- WebSocket support for reliable real-time communication
-- WebTransport support for low-latency communication
-- Efficient message handling
+```bash
+# Build with tokio-pty-process support
+cargo build --features tokio-pty-process
 
-### Process Management
-- Portable PTY (Pseudo-Terminal) implementation
-- Cross-platform terminal support
-- Process lifecycle management
-- Resource-efficient design
+# Build with portable-pty support
+cargo build --features portable-pty
 
-## Technology Stack
-
-### Core Technologies
-- **Rust 2024 Edition** - Systems programming language
-- **Tokio 1.48.0** - Asynchronous runtime
-- **Axum 0.8.7** - Web framework
-- **wtransport 0.6.1** - WebTransport implementation
-- **tokio-tungstenite 0.28.0** - WebSocket implementation
-
-### Terminal Emulation
-- **portable-pty 0.9.0** - Cross-platform PTY implementation
-
-### Serialization
-- **Serde 1.0.228** - Serialization/deserialization
-
-### Logging and Monitoring
-- **log4rs 1.3.0** - Logging framework
-- **anyhow 1.0.100** - Error handling
+# Build with both implementations
+cargo build --features tokio-pty-process,portable-pty
+```
 
 ### Configuration
-- **config 0.15.0** - Configuration management
+
+Edit the `config.toml` file to configure the terminal:
+
+```toml
+# PTY implementation to use (options: "tokio_process", "tokio_pty_process", "portable_pty")
+pty_implementation = "tokio_pty_process"
+
+# Default shell type to use
+default_shell_type = "bash"
+
+# HTTP server port
+http_port = 8080
+
+# WebTransport server port
+webtransport_port = 8082
+```
+
+### Running
+
+```bash
+# Run with default features
+cargo run
+
+# Run with specific PTY implementation
+cargo run --features tokio-pty-process
+```
+
+## API Endpoints
+
+### Sessions
+
+- `POST /api/sessions` - Create a new terminal session
+- `GET /api/sessions` - Get all terminal sessions
+- `GET /api/sessions/:session_id` - Get a specific terminal session
+- `POST /api/sessions/:session_id/resize` - Resize a terminal session
+- `DELETE /api/sessions/:session_id` - Terminate a terminal session
+
+### WebSocket
+
+- `GET /ws` - Connect to a new terminal session via WebSocket
+- `GET /ws/:session_id` - Connect to an existing terminal session via WebSocket
 
 ## Project Structure
 
 ```
-src/
-├── main.rs                    # Application entry point
-├── config/                    # Configuration management
-├── handlers/                  # HTTP request handlers
-├── models/                    # Domain models
-├── repository/                # Data access layer
-├── services/                  # Business logic services
-├── terminal/                  # Terminal process management
-├── websocket/                 # WebSocket implementation
-└── webtransport/              # WebTransport implementation
+rs_terminal/
+├── src/
+│   ├── api/            # API DTO definitions
+│   ├── app_state/      # Application state management
+│   ├── config/         # Configuration handling
+│   ├── handlers/       # HTTP and WebSocket handlers
+│   ├── protocol/       # Terminal connection protocols
+│   ├── pty/            # PTY implementations
+│   │   ├── mod.rs              # PTY factory and trait definitions
+│   │   ├── portable_pty_impl.rs # portable-pty implementation
+│   │   ├── pty_trait.rs        # AsyncPty trait definition
+│   │   ├── tokio_process_pty_impl.rs  # tokio-process implementation
+│   │   └── tokio_pty_process_pty_impl.rs # tokio-pty-process implementation
+│   ├── server/         # HTTP server setup
+│   ├── service/        # Business logic services
+│   └── main.rs         # Application entry point
+├── config.toml         # Configuration file
+└── Cargo.toml          # Rust package configuration
 ```
 
-## Quick Start
+## Feature Flags
 
-### Prerequisites
-- Rust 1.80 or higher
-- Cargo (Rust package manager)
+- `tokio-pty-process` - Enable tokio-pty-process PTY implementation
+- `portable-pty` - Enable portable-pty PTY implementation
 
-### Build and Run
+## Contributing
 
-1. **Build the project**:
-   ```bash
-   cargo build
-   ```
-
-2. **Run the application**:
-   ```bash
-   cargo run
-   ```
-
-3. **Run tests**:
-   ```bash
-   cargo test
-   ```
-
-4. **Build with release optimizations**:
-   ```bash
-   cargo build --release
-   ```
-
-### Configuration
-
-The application can be configured through the `config.toml` file located in the project root.
-
-Key configuration options:
-- `server.port` - Server port
-- `terminal.default_shell` - Default shell type
-- `logging.level` - Logging level
-- `websocket.enabled` - Enable WebSocket support
-- `webtransport.enabled` - Enable WebTransport support
-
-## Development
-
-### Code Style
-- Follow Rust best practices
-- Use `cargo fmt` for code formatting
-- Use `cargo clippy` for code linting
-
-### Performance Focus
-- Use async/await for non-blocking operations
-- Optimize memory usage
-- Minimize allocations
-- Use efficient data structures
-
-### Testing
-- Write unit tests for core functionality
-- Write integration tests for API endpoints
-- Test with multiple shell environments
-
-## Core Components
-
-### Terminal Session
-Represents a terminal session with all its lifecycle management capabilities.
-
-### PTY Manager
-Handles the creation and management of PTY processes.
-
-### WebSocket Server
-Provides real-time communication through WebSocket protocol.
-
-### WebTransport Server
-Provides low-latency communication through WebTransport protocol.
-
-### Session Repository
-Manages the persistence and retrieval of terminal sessions.
-
-## API Endpoints
-
-### RESTful APIs
-
-#### Session Management
-- `POST /api/sessions` - Create a new terminal session
-- `GET /api/sessions` - Get all terminal sessions
-- `GET /api/sessions/{id}` - Get a specific terminal session
-- `DELETE /api/sessions/{id}` - Delete a terminal session
-- `POST /api/sessions/{id}/resize` - Resize a terminal session
-
-### WebSocket API
-- `ws://localhost:8080/ws` - WebSocket endpoint for terminal communication
-
-### WebTransport API
-- `https://localhost:8082` - WebTransport endpoint for terminal communication
-
-## Performance Features
-
-- **Non-blocking I/O** - Uses Tokio for asynchronous operations
-- **Efficient message handling** - Minimizes overhead for real-time communication
-- **Memory efficient** - Designed to use minimal memory
-- **High concurrency** - Handles multiple connections efficiently
-- **Fast startup time** - Quick initialization for rapid deployment
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT
