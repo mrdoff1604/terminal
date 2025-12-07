@@ -57,4 +57,59 @@ pub struct ShellConfig {
     pub environment: Option<std::collections::HashMap<String, String>>,
 }
 
-// 删除了硬编码的默认配置，所有配置必须从配置文件读取
+impl TerminalConfig {
+    /// Get the complete shell configuration for a given shell type
+    /// Priority: shell-specific config > default config
+    pub fn get_shell_config(&self, shell_type: &str) -> ResolvedShellConfig {
+        // Get the shell-specific configuration if it exists
+        let shell_config = self.shells.get(shell_type);
+        
+        // Resolve terminal size
+        let size = shell_config
+            .and_then(|sc| sc.size.clone())
+            .unwrap_or(self.default_shell_config.size.clone());
+        
+        // Resolve working directory
+        let working_directory = shell_config
+            .and_then(|sc| sc.working_directory.clone())
+            .or_else(|| self.default_shell_config.working_directory.clone());
+        
+        // Resolve environment variables
+        let environment = shell_config
+            .and_then(|sc| sc.environment.clone())
+            .or_else(|| self.default_shell_config.environment.clone());
+        
+        // Get the command for this shell type (required)
+        let command = shell_config
+            .map(|sc| sc.command.clone())
+            // If no command is found for this shell type, return an empty vector
+            .unwrap_or(Vec::new());
+        
+        ResolvedShellConfig {
+            shell_type: shell_type.to_string(),
+            command,
+            size,
+            working_directory,
+            environment,
+        }
+    }
+}
+
+/// Resolved shell configuration with all fields populated
+#[derive(Debug, Clone, Serialize)]
+pub struct ResolvedShellConfig {
+    /// Shell type
+    pub shell_type: String,
+    
+    /// Command to execute
+    pub command: Vec<String>,
+    
+    /// Terminal size
+    pub size: TerminalSize,
+    
+    /// Working directory
+    pub working_directory: Option<PathBuf>,
+    
+    /// Environment variables
+    pub environment: Option<std::collections::HashMap<String, String>>,
+}

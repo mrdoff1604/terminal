@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 /// Request DTO for creating a new terminal session
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateSessionRequest {
     /// User ID associated with this session
     pub user_id: String,
@@ -37,9 +38,10 @@ pub struct ResizeTerminalRequest {
 
 /// Response DTO for a terminal session
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TerminalSession {
-    /// Unique session ID
-    pub session_id: String,
+    /// Unique session ID (renamed to 'id' to match frontend expectations)
+    pub id: String,
     
     /// User ID associated with this session
     pub user_id: String,
@@ -56,7 +58,8 @@ pub struct TerminalSession {
     /// Terminal rows
     pub rows: u16,
     
-    /// Working directory
+    /// Working directory (use empty string instead of null if not set)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub working_directory: Option<String>,
     
     /// Shell type
@@ -71,6 +74,7 @@ pub struct TerminalSession {
 
 /// Response DTO for terminal resize operation
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TerminalResizeResponse {
     /// Session ID
     pub session_id: String,
@@ -87,6 +91,7 @@ pub struct TerminalResizeResponse {
 
 /// Response DTO for terminal termination operation
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TerminalTerminateResponse {
     /// Session ID
     pub session_id: String,
@@ -100,6 +105,7 @@ pub struct TerminalTerminateResponse {
 
 /// Generic success response
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SuccessResponse {
     /// Success flag
     pub success: bool,
@@ -110,6 +116,7 @@ pub struct SuccessResponse {
 
 /// Generic error response
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ErrorResponse {
     /// Error flag
     pub error: bool,

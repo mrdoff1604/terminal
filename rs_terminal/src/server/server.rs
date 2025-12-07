@@ -1,9 +1,10 @@
 /// Server implementation for Waylon Terminal Rust backend
 use std::net::SocketAddr;
 
-use axum::{Router, routing::{get, post, delete}};
+use axum::{Router, http::{self, Method}, routing::{get, post, delete}};
 use tokio::net::TcpListener;
 use tracing::info;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{app_state::AppState, handlers};
 
@@ -22,6 +23,26 @@ pub fn start_webtransport_service(state: AppState) {
 
 /// Build the application router with routes
 pub fn build_router(state: AppState) -> Router {
+    // Create CORS layer to allow cross-origin requests
+    let cors = CorsLayer::new()
+        // Allow all origins
+        .allow_origin(Any)
+        // Allow specific HTTP methods instead of wildcard
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+            // WebSocket upgrade method
+            Method::from_bytes(b"UPGRADE").unwrap(),
+        ])
+        // Allow all headers (now allowed since we're not using credentials)
+        .allow_headers(Any);
+        // Removed allow_credentials(true) to comply with CORS spec
+        // When allow_credentials is true, you can't use wildcard for origin or headers
+
     Router::new()
         // Health check endpoint
         .route("/", get(|| async { "Waylon Terminal - Rust Backend" }))
@@ -32,6 +53,8 @@ pub fn build_router(state: AppState) -> Router {
         
         // REST API endpoints for session management
         .nest("/api", api_routes())
+        // Add CORS middleware layer
+        .layer(cors)
         .with_state(state)
 }
 

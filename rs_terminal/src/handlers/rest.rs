@@ -6,7 +6,7 @@ use serde_json::json;
 use tracing::{info, error};
 use uuid::Uuid;
 
-use crate::{app_state::{AppState, Session, ConnectionType}, api::dto::{CreateSessionRequest, ResizeTerminalRequest, TerminalSession, ErrorResponse, SuccessResponse}};
+use crate::{app_state::{AppState, Session, ConnectionType}, api::dto::{CreateSessionRequest, ResizeTerminalRequest, TerminalSession, ErrorResponse, SuccessResponse}, config::ResolvedShellConfig};
 
 /// Create a new terminal session
 pub async fn create_session(
@@ -18,30 +18,47 @@ pub async fn create_session(
     // Generate a new session ID
     let session_id = Uuid::new_v4().to_string();
     
-    // Create session with provided parameters
+    // Determine shell type (request > default)
+    let shell_type = req.shell_type.clone().unwrap_or_else(|| state.config.default_shell_type.clone());
+    
+    // Get the complete resolved shell configuration (shell config > default config)
+    let resolved_shell_config = state.config.get_shell_config(&shell_type);
+    
+    // Determine final parameters with correct priority: request > resolved shell config
+    let columns = req.columns.unwrap_or(resolved_shell_config.size.columns);
+    let rows = req.rows.unwrap_or(resolved_shell_config.size.rows);
+    
+    // Determine working directory: request > resolved shell config
+    let working_directory = req.working_directory.clone().or_else(|| {
+        resolved_shell_config.working_directory.clone()
+            // Convert PathBuf to String
+            .map(|path| path.to_string_lossy().to_string())
+    });
+    
+    // Create session with properly resolved parameters
     let session = Session::new(
         session_id.clone(),
         req.user_id,
         req.title,
-        req.working_directory,
-        req.shell_type.unwrap_or_else(|| state.config.default_shell_type.clone()),
-        req.columns.unwrap_or(80),
-        req.rows.unwrap_or(24),
+        working_directory,
+        shell_type,
+        columns,
+        rows,
         ConnectionType::WebSocket,
     );
     
     // Add session to application state
     state.add_session(session.clone()).await;
     
-    // Map to API response DTO
+    // Map to API response DTO with correct field names
     let response = TerminalSession {
-        session_id: session.session_id,
+        id: session.session_id, // Use 'id' instead of 'session_id' to match frontend expectations
         user_id: session.user_id,
         title: session.title,
         status: format!("{:?}", session.status).to_lowercase(),
         columns: session.columns,
         rows: session.rows,
-        working_directory: session.working_directory,
+        working_directory: session.working_directory, // This will be skipped if None due to skip_serializing_if attribute
         shell_type: session.shell_type,
         connection_type: format!("{:?}", session.connection_type),
         created_at: session.created_at,
@@ -64,7 +81,7 @@ pub async fn get_all_sessions(
     // Map to API response DTOs
     let response_sessions: Vec<TerminalSession> = sessions.into_iter().map(|session| {
         TerminalSession {
-            session_id: session.session_id,
+            id: session.session_id,
             user_id: session.user_id,
             title: session.title,
             status: format!("{:?}", session.status).to_lowercase(),
@@ -90,19 +107,19 @@ pub async fn get_session(
     // Get session from app state
     match state.get_session(&session_id).await {
         Some(session) => {
-            // Return success as JSON value
+            // Return success as JSON value with correct field names
             let success_response = json!(
                 {
-                    "session_id": session.session_id,
-                    "user_id": session.user_id,
+                    "id": session.session_id, // Use 'id' instead of 'session_id'
+                    "userId": session.user_id, // Use camelCase for all fields
                     "title": session.title,
                     "status": format!("{:?}", session.status).to_lowercase(),
                     "columns": session.columns,
                     "rows": session.rows,
-                    "working_directory": session.working_directory,
-                    "shell_type": session.shell_type,
-                    "connection_type": format!("{:?}", session.connection_type),
-                    "created_at": session.created_at,
+                    "workingDirectory": session.working_directory, // Use camelCase and let serde handle null values
+                    "shellType": session.shell_type, // Use camelCase
+                    "connectionType": format!("{:?}", session.connection_type), // Use camelCase
+                    "createdAt": session.created_at, // Use camelCase
                 }
             );
             
