@@ -284,9 +284,13 @@ export const checkSessionActive = async (sessionId: string, _userId?: string): P
  */
 export const downloadFile = async (sessionId: string, filePath: string): Promise<void> => {
   try {
-    const url = `${API_BASE_URL}/${sessionId}/download?filePath=${encodeURIComponent(filePath)}`;
+    const url = `${API_BASE_URL}/${sessionId}/download`;
     
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath })
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to download file: ${response.statusText}`);
@@ -294,12 +298,27 @@ export const downloadFile = async (sessionId: string, filePath: string): Promise
     
     // Extract filename from Content-Disposition header or use basename
     const contentDisposition = response.headers.get('Content-Disposition');
-    let filename = filePath.split('/').pop() || filePath.split('\\').pop() || 'download';
+    
+    // Use a reliable cross-platform method to get the basename from filePath
+    const getBasename = (path: string): string => {
+      // Handle both Windows and Linux paths by finding the last occurrence of either separator
+      const lastSlashIndex = path.lastIndexOf('/');
+      const lastBackslashIndex = path.lastIndexOf('\\');
+      const lastSeparatorIndex = Math.max(lastSlashIndex, lastBackslashIndex);
+      
+      if (lastSeparatorIndex === -1) {
+        return path; // No separator found, return the whole path
+      }
+      
+      return path.slice(lastSeparatorIndex + 1);
+    };
+    
+    let filename = getBasename(filePath) || 'download';
     
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
       if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1];
+        filename = getBasename(filenameMatch[1]);
       }
     }
     
