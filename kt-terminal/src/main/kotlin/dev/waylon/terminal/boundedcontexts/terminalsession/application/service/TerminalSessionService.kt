@@ -6,7 +6,6 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessio
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
-import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionAlreadyTerminatedException
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionNotFoundException
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.TerminalConfig
 import kotlin.time.Clock
@@ -66,8 +65,9 @@ class TerminalSessionService(
      * @throws TerminalSessionNotFoundException If session not found
      */
     suspend fun getSessionById(id: String): TerminalSession {
-        return terminalSessionRepository.getById(id)?.apply {
-            updateSessionActivity(this)
+        return terminalSessionRepository.getById(id)?.let {
+            updateSessionActivity(it)
+            it
         } ?: throw TerminalSessionNotFoundException(id)
     }
 
@@ -107,10 +107,10 @@ class TerminalSessionService(
         }
 
         // 2. Then update session object in storage
-        return terminalSessionRepository.getById(id)?.apply {
+        return getSessionById(id).apply {
             resize(columns, rows)
             terminalSessionRepository.update(this)
-        } ?: throw TerminalSessionNotFoundException(id)
+        }
     }
 
     /**
@@ -121,13 +121,13 @@ class TerminalSessionService(
      * @throws TerminalSessionNotFoundException If session not found
      */
     suspend fun terminateSession(id: String, reason: String? = null): TerminalSession {
-        return terminalSessionRepository.getById(id)?.apply {
+        return getSessionById(id).apply {
             // Use domain model's terminate method
             terminate()
-        }?.also {
+        }.also {
             // Remove from storage
             terminalSessionRepository.deleteById(id)
-        } ?: throw TerminalSessionNotFoundException(id)
+        }
     }
 
     /**
@@ -138,11 +138,11 @@ class TerminalSessionService(
      * @throws TerminalSessionNotFoundException If session not found
      */
     suspend fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession {
-        return terminalSessionRepository.getById(id)?.apply {
+        return getSessionById(id).apply {
             // Use domain model's updateStatus method
             updateStatus(status)
             terminalSessionRepository.update(this)
-        } ?: throw TerminalSessionNotFoundException(id)
+        }
     }
 
     /**

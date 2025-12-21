@@ -2,7 +2,7 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.application.service
 
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.TerminalCommunicationProtocol
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.process.TerminalProcessManager
-import kotlin.time.ExperimentalTime
+import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionNotFoundException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,11 +22,12 @@ class TerminalCommunicationService(
 
     private val log = LoggerFactory.getLogger(TerminalCommunicationService::class.java)
 
-    @OptIn(ExperimentalTime::class)
     suspend fun handleCommunication(sessionId: String, protocol: TerminalCommunicationProtocol) {
         log.info("Handling communication for session: $sessionId")
 
-        val terminalSession = terminalSessionService.getSessionById(sessionId) ?: run {
+        val terminalSession = try {
+            terminalSessionService.getSessionById(sessionId)
+        } catch (e: TerminalSessionNotFoundException) {
             log.error("Session not found: $sessionId")
             protocol.close("Session not found")
             return

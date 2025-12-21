@@ -9,12 +9,14 @@ open class TerminalSessionException(message: String, cause: Throwable? = null) :
 /**
  * Exception thrown when a terminal session is not found
  */
-class TerminalSessionNotFoundException(sessionId: String) : TerminalSessionException("Terminal session not found: $sessionId")
+class TerminalSessionNotFoundException(sessionId: String) :
+    TerminalSessionException("Terminal session not found: $sessionId")
 
 /**
  * Exception thrown when a terminal session is already terminated
  */
-class TerminalSessionAlreadyTerminatedException(sessionId: String) : TerminalSessionException("Terminal session already terminated: $sessionId")
+class TerminalSessionAlreadyTerminatedException(sessionId: String) :
+    TerminalSessionException("Terminal session already terminated: $sessionId")
 
 /**
  * Exception thrown when a terminal session operation is invalid

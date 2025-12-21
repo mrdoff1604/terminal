@@ -1,20 +1,20 @@
 <configuration>
-    <!-- 控制台输出 -->
+    <!-- Console output -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %X{call-id} %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- 文件输出 -->
+    <!-- File output -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/terminal-server.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- 每日滚动日志文件 -->
+            <!-- Daily rolling log files -->
             <fileNamePattern>logs/terminal-server.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <!-- 保留30天的日志 -->
+            <!-- Keep logs for 30 days -->
             <maxHistory>30</maxHistory>
-            <!-- 单个文件最大100MB -->
+            <!-- Maximum single file size 100MB -->
             <maxFileSize>100MB</maxFileSize>
         </rollingPolicy>
         <encoder>
@@ -22,13 +22,13 @@
         </encoder>
     </appender>
 
-    <!-- 设置默认日志级别为DEBUG -->
+    <!-- Set default log level to DEBUG -->
     <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
     </root>
 
-    <!-- 特定包的日志级别 -->
+    <!-- Log levels for specific packages -->
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="io.netty" level="INFO"/>
     <logger name="dev.waylon.terminal" level="DEBUG"/>

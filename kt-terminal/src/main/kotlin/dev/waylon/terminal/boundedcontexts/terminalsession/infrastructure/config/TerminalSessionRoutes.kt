@@ -7,7 +7,6 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.R
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.ResizeTerminalUseCase
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase.TerminateTerminalSessionUseCase
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
-import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionAlreadyTerminatedException
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionException
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionNotFoundException
 import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.dto.CreateSessionRequest
@@ -220,7 +219,10 @@ fun Application.configureTerminalSessionRoutes() {
                         call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
                     } catch (e: Exception) {
                         log.error("Error terminating session: {}", e.message, e)
-                        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to terminate session"))
+                        call.respond(
+                            HttpStatusCode.InternalServerError,
+                            mapOf("error" to "Failed to terminate session")
+                        )
                     }
                 }
             }
