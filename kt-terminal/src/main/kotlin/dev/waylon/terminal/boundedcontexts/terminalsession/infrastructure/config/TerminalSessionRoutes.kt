@@ -22,7 +22,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import org.koin.ktor.ext.inject
 
-// 响应数据类
+/**
+ * Response data classes
+ */
 
 @Serializable
 data class TerminalResizeResponse(
@@ -52,12 +54,12 @@ data class TerminalStatusResponse(
 /**
  * Terminal session routes configuration
  * This follows the same pattern as other route configurations
- * Route层只负责处理HTTP请求和响应，业务逻辑封装在UseCase中
+ * Route layer only handles HTTP requests and responses, business logic is encapsulated in UseCase
  */
 fun Application.configureTerminalSessionRoutes() {
     val log = this.log
     
-    // 注入UseCase，替代直接注入服务层
+    // Inject UseCases instead of directly injecting service layer
     val createTerminalSessionUseCase by inject<CreateTerminalSessionUseCase>()
     val getAllTerminalSessionsUseCase by inject<GetAllTerminalSessionsUseCase>()
     val getTerminalSessionByIdUseCase by inject<GetTerminalSessionByIdUseCase>()
@@ -72,23 +74,23 @@ fun Application.configureTerminalSessionRoutes() {
                 post {
                     log.debug("Creating new terminal session")
                     try {
-                        // 接收请求体
+                        // Receive request body
                         val request = call.receive<CreateSessionRequest>()
                         
-                        // 使用UseCase执行业务逻辑
+                        // Execute business logic using UseCase
                         val session = createTerminalSessionUseCase.execute(request)
                         
                         call.respond(HttpStatusCode.Created, session)
                     } catch (e: SerializationException) {
-                        // 请求格式错误
+                        // Invalid request format
                         log.error("Invalid request format: {}", e.message)
                         call.respond(HttpStatusCode.BadRequest, "Invalid request format")
                     } catch (e: IllegalArgumentException) {
-                        // 参数验证失败
+                        // Validation failed
                         log.error("Validation failed: {}", e.message)
                         call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
                     } catch (e: Exception) {
-                        // 其他异常
+                        // Other exceptions
                         log.error("Error creating session: {}", e.message, e)
                         call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to create session"))
                     }
@@ -98,7 +100,7 @@ fun Application.configureTerminalSessionRoutes() {
                 get {
                     log.debug("Getting all terminal sessions")
                     try {
-                        // 使用UseCase执行业务逻辑
+                        // Execute business logic using UseCase
                         val sessions = getAllTerminalSessionsUseCase.execute()
                         
                         call.respond(HttpStatusCode.OK, sessions)
@@ -116,7 +118,7 @@ fun Application.configureTerminalSessionRoutes() {
                     )
                     log.debug("Getting session by ID: {}", id)
                     try {
-                        // 使用UseCase执行业务逻辑
+                        // Execute business logic using UseCase
                         val session = getTerminalSessionByIdUseCase.execute(sessionId = id) ?: return@get call.respond(
                             HttpStatusCode.NotFound,
                             mapOf("error" to "Session not found")
@@ -137,18 +139,18 @@ fun Application.configureTerminalSessionRoutes() {
                     )
                     
                     try {
-                        // 接收请求体
+                        // Receive request body
                         val request = call.receive<ResizeTerminalRequest>()
                         
                         log.debug("Resizing terminal session {} to columns: {}, rows: {}", id, request.columns, request.rows)
                         
-                        // 使用UseCase执行业务逻辑
+                        // Execute business logic using UseCase
                         val session = resizeTerminalUseCase.execute(sessionId = id, request = request) ?: return@post call.respond(
                             HttpStatusCode.NotFound,
                             "Session not found"
                         )
                         
-                        // 使用专门的数据类响应，直接使用TerminalSize对象
+                        // Use dedicated data class for response, directly using TerminalSize object
                         val response = TerminalResizeResponse(
                             sessionId = session.id,
                             terminalSize = session.terminalSize,
@@ -157,15 +159,15 @@ fun Application.configureTerminalSessionRoutes() {
                         
                         call.respond(HttpStatusCode.OK, response)
                     } catch (e: SerializationException) {
-                        // 请求格式错误
+                        // Invalid request format
                         log.error("Invalid request format: {}", e.message)
                         call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid request format"))
                     } catch (e: IllegalArgumentException) {
-                        // 参数验证失败
+                        // Validation failed
                         log.error("Validation failed: {}", e.message)
                         call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
                     } catch (e: Exception) {
-                        // 其他异常
+                        // Other exceptions
                         log.error("Error resizing terminal: {}", e.message, e)
                         call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to resize terminal"))
                     }
@@ -179,7 +181,7 @@ fun Application.configureTerminalSessionRoutes() {
                     )
                     log.debug("Terminating terminal session: {}", id)
                     try {
-                        // 使用UseCase执行业务逻辑
+                        // Execute business logic using UseCase
                         val session = terminateTerminalSessionUseCase.execute(sessionId = id) ?: return@delete call.respond(
                             HttpStatusCode.NotFound,
                             mapOf("error" to "Session not found")

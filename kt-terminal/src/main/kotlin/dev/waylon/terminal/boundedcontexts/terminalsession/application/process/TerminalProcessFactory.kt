@@ -5,22 +5,22 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.Terminal
 import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.service.Pty4jTerminalProcess
 
 /**
- * 终端进程工厂
- * 负责创建TerminalProcess对象，处理参数优先级：
- * 1. 请求参数
- * 2. 配置的shell参数
- * 3. 默认的shell参数
+ * Terminal Process Factory
+ * Responsible for creating TerminalProcess objects, handling parameter priority:
+ * 1. Request parameters
+ * 2. Configured shell parameters
+ * 3. Default shell parameters
  */
 class TerminalProcessFactory(
     private val terminalConfig: TerminalConfig
 ) {
     /**
-     * 创建终端进程
-     * @param sessionId 会话ID
-     * @param requestedWorkingDirectory 请求的工作目录
-     * @param requestedShellType 请求的shell类型
-     * @param requestedTerminalSize 请求的终端尺寸
-     * @return 创建的终端进程
+     * Create Terminal Process
+     * @param sessionId Session ID
+     * @param requestedWorkingDirectory Requested working directory
+     * @param requestedShellType Requested shell type
+     * @param requestedTerminalSize Requested terminal size
+     * @return Created terminal process
      */
     fun createProcess(
         sessionId: String,
@@ -28,27 +28,27 @@ class TerminalProcessFactory(
         requestedShellType: String,
         requestedTerminalSize: TerminalSize
     ): TerminalProcess {
-        // 1. 确定实际使用的shell类型：请求参数 > 默认值
+        // 1. Determine actual shell type: request parameter > default value
         val actualShellType = requestedShellType.ifBlank { terminalConfig.defaultShellType }
         
-        // 2. 获取shell配置
+        // 2. Get shell configuration
         val shellConfig = terminalConfig.shells[actualShellType]
         
-        // 3. 确定实际工作目录：请求参数 > shell配置 > 默认值
+        // 3. Determine actual working directory: request parameter > shell config > default value
         val actualWorkingDirectory = when {
             requestedWorkingDirectory.isNotBlank() -> requestedWorkingDirectory
             shellConfig?.workingDirectory?.isNotBlank() == true -> shellConfig.workingDirectory
             else -> terminalConfig.defaultWorkingDirectory
         }
         
-        // 4. 确定实际终端尺寸：请求参数 > shell配置 > 默认值
+        // 4. Determine actual terminal size: request parameter > shell config > default value
         val actualTerminalSize = when {
             requestedTerminalSize != terminalConfig.defaultTerminalSize -> requestedTerminalSize
             shellConfig?.size != null -> shellConfig.size
             else -> terminalConfig.defaultTerminalSize
         }
         
-        // 5. 创建终端进程
+        // 5. Create terminal process
         return Pty4jTerminalProcess(
             sessionId = sessionId,
             workingDirectory = actualWorkingDirectory,

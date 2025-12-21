@@ -22,26 +22,26 @@ class Pty4jTerminalProcess(
 
 
     init {
-        // 从终端配置中获取shell配置
+        // Get shell configuration from terminal config
         val shellConfig = terminalConfig.shells[shellType]
 
-        // 使用配置文件中的shell配置，否则使用默认值
+        // Use shell configuration from config file, otherwise use default value
         val command = shellConfig?.command?.toTypedArray()
 
-        // 确定工作目录
+        // Determine working directory
         val actualWorkingDirectory = workingDirectory
 
         val environment = mutableMapOf<String, String>()
 
-        // 添加所有系统环境变量
+        // Add all system environment variables
         environment.putAll(System.getenv())
 
-        // 覆盖配置中的环境变量
+        // Override with environment variables from configuration
         if (shellConfig?.environment != null) {
             environment.putAll(shellConfig.environment)
         }
 
-        // 确定终端尺寸
+        // Determine terminal size
         val actualSize = terminalSize
 
         process = PtyProcessBuilder()
@@ -94,15 +94,14 @@ class Pty4jTerminalProcess(
      * Cleanup all resources safely
      */
     private fun cleanupResources() {
-        // 标记为已终止，防止重复清理
+        // Mark as terminated to prevent duplicate cleanup
         isTerminated = true
-
 
         try {
             // Destroy the process
             if (process.isAlive) {
                 process.destroy()
-                // 等待进程终止，避免僵尸进程
+                // Wait for process termination to avoid zombie processes
                 process.waitFor(100, TimeUnit.MILLISECONDS)
             }
         } catch (e: Exception) {
@@ -123,7 +122,7 @@ class Pty4jTerminalProcess(
     }
 
     /**
-     * 使用closeable接口确保资源释放
+     * Use closeable interface to ensure resource release
      */
     fun close() {
         cleanupResources()

@@ -10,10 +10,10 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.Terminal
 import org.slf4j.LoggerFactory
 
 /**
- * 终端会话服务
- * 负责协调终端会话的生命周期管理
- * 符合DDD最佳实践：服务层只负责协调，不包含业务逻辑
- * 符合DIP：依赖于抽象，不依赖于具体实现
+ * Terminal Session Service
+ * Responsible for coordinating the lifecycle management of terminal sessions
+ * Follows DDD best practices: Service layer only coordinates, no business logic
+ * Follows DIP: Depends on abstractions, not concrete implementations
  */
 class TerminalSessionService(
     private val terminalConfig: TerminalConfig,
@@ -24,13 +24,13 @@ class TerminalSessionService(
     private val log = LoggerFactory.getLogger(TerminalSessionService::class.java)
 
     /**
-     * 创建终端会话
-     * @param userId 用户ID
-     * @param title 会话标题
-     * @param workingDirectory 工作目录
-     * @param shellType shell类型
-     * @param size 终端尺寸
-     * @return 创建的终端会话
+     * Create terminal session
+     * @param userId User ID
+     * @param title Session title
+     * @param workingDirectory Working directory
+     * @param shellType Shell type
+     * @param size Terminal size
+     * @return Created terminal session
      */
     fun createSession(
         userId: String,
@@ -39,7 +39,7 @@ class TerminalSessionService(
         workingDirectory: String?,
         size: TerminalSize?
     ): TerminalSession {
-        // 使用工厂创建会话，工厂负责处理参数优先级
+        // Use factory to create session, factory handles parameter priority
         val session = terminalSessionFactory.createSession(
             userId = userId,
             title = title,
@@ -55,9 +55,9 @@ class TerminalSessionService(
     }
 
     /**
-     * 根据ID获取终端会话
-     * @param id 会话ID
-     * @return 终端会话，如果不存在则返回null
+     * Get terminal session by ID
+     * @param id Session ID
+     * @return Terminal session, or null if not found
      */
     fun getSessionById(id: String): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
@@ -66,37 +66,37 @@ class TerminalSessionService(
     }
 
     /**
-     * 根据用户ID获取终端会话列表
-     * @param userId 用户ID
-     * @return 终端会话列表
+     * Get terminal sessions by user ID
+     * @param userId User ID
+     * @return List of terminal sessions
      */
     fun getSessionsByUserId(userId: String): List<TerminalSession> {
         return terminalSessionRepository.getByUserId(userId)
     }
 
     /**
-     * 获取所有终端会话
-     * @return 所有终端会话列表
+     * Get all terminal sessions
+     * @return List of all terminal sessions
      */
     fun getAllSessions(): List<TerminalSession> {
         return terminalSessionRepository.getAll()
     }
 
     /**
-     * 调整终端大小
-     * @param id 会话ID
-     * @param columns 列数
-     * @param rows 行数
-     * @return 调整后的终端会话，如果不存在则返回null
+     * Resize terminal
+     * @param id Session ID
+     * @param columns Number of columns
+     * @param rows Number of rows
+     * @return Resized terminal session, or null if not found
      */
     fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
         val terminalSize = TerminalSize(columns, rows)
         
-        // 1. 先更新PTY进程的大小
+        // 1. First update PTY process size
         val resizeSuccess = terminalProcessManager.resizeProcess(id, terminalSize)
         log.debug("Resize PTY process result for session {}: {}", id, resizeSuccess)
         
-        // 2. 然后更新DB中的会话对象
+        // 2. Then update session object in storage
         return terminalSessionRepository.getById(id)?.also {
             it.resize(columns, rows)
             terminalSessionRepository.update(it)
@@ -104,39 +104,39 @@ class TerminalSessionService(
     }
 
     /**
-     * 终止终端会话
-     * @param id 会话ID
-     * @param reason 终止原因
-     * @return 终止的终端会话，如果不存在则返回null
+     * Terminate terminal session
+     * @param id Session ID
+     * @param reason Termination reason
+     * @return Terminated terminal session, or null if not found
      */
     fun terminateSession(id: String, reason: String? = null): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
-            // 使用领域模型的terminate方法
+            // Use domain model's terminate method
             it.terminate()
 
-            // 从存储中移除
+            // Remove from storage
             terminalSessionRepository.deleteById(id)
         }
     }
 
     /**
-     * 更新终端会话状态
-     * @param id 会话ID
-     * @param status 新状态
-     * @return 更新后的终端会话，如果不存在则返回null
+     * Update terminal session status
+     * @param id Session ID
+     * @param status New status
+     * @return Updated terminal session, or null if not found
      */
     fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
-            // 使用领域模型的updateStatus方法
+            // Use domain model's updateStatus method
             it.updateStatus(status)
             terminalSessionRepository.update(it)
         }
     }
 
     /**
-     * 删除终端会话
-     * @param id 会话ID
-     * @return 是否删除成功
+     * Delete terminal session
+     * @param id Session ID
+     * @return Whether deletion was successful
      */
     fun deleteSession(id: String): Boolean {
         val session = terminalSessionRepository.deleteById(id)
@@ -144,17 +144,17 @@ class TerminalSessionService(
     }
 
     /**
-     * 更新会话活动时间
-     * @param session 终端会话
+     * Update session activity time
+     * @param session Terminal session
      */
     private fun updateSessionActivity(session: TerminalSession) {
         val now = System.currentTimeMillis()
 
-        // 使用领域模型的方法更新活动时间和过期时间
+        // Use domain model methods to update activity time and expiry time
         session.updateActivity(now)
         session.updateExpiryTime(terminalConfig.sessionTimeoutMs, now)
 
-        // 更新存储中的会话
+        // Update session in storage
         terminalSessionRepository.update(session)
     }
 }

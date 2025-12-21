@@ -5,7 +5,19 @@ plugins {
 }
 
 group = "org.now"
-version = "0.0.1"
+version = "0.0.2"
+
+// Set consistent JVM target for all tasks
+tasks.withType<JavaCompile> {
+    options.release.set(25)
+}
+
+// Set Kotlin JVM target explicitly
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
+    }
+}
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"

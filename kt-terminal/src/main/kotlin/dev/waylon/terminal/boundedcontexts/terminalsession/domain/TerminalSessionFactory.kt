@@ -4,11 +4,11 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.Terminal
 import java.util.UUID
 
 /**
- * 终端会话工厂
- * 负责创建TerminalSession对象，处理参数优先级：
- * 1. 请求参数
- * 2. 配置的shell参数
- * 3. 默认的shell参数
+ * Terminal Session Factory
+ * Responsible for creating TerminalSession objects, handling parameter priority:
+ * 1. Request parameters
+ * 2. Configured shell parameters
+ * 3. Default shell parameters
  */
 class TerminalSessionFactory(
     private val terminalConfig: TerminalConfig
@@ -19,13 +19,13 @@ class TerminalSessionFactory(
     private val sessionTimeoutMs = terminalConfig.sessionTimeoutMs
     
     /**
-     * 创建终端会话
-     * @param userId 用户ID
-     * @param title 会话标题
-     * @param workingDirectory 请求的工作目录
-     * @param shellType 请求的shell类型
-     * @param terminalSize 请求的终端尺寸
-     * @return 创建的终端会话
+     * Create Terminal Session
+     * @param userId User ID
+     * @param title Session title
+     * @param workingDirectory Requested working directory
+     * @param shellType Requested shell type
+     * @param terminalSize Requested terminal size
+     * @return Created terminal session
      */
     fun createSession(
         userId: String,
@@ -36,27 +36,27 @@ class TerminalSessionFactory(
     ): TerminalSession {
         val now = System.currentTimeMillis()
         
-        // 1. 确定实际使用的shell类型：请求参数 > 默认值
+        // 1. Determine actual shell type: request parameter > default value
         val actualShellType = shellType ?: defaultShellType
         
-        // 2. 获取shell配置
+        // 2. Get shell configuration
         val shellConfig = terminalConfig.shells[actualShellType]
         
-        // 3. 确定实际工作目录：请求参数 > shell配置 > 默认值
+        // 3. Determine actual working directory: request parameter > shell config > default value
         val actualWorkingDirectory = when {
             workingDirectory != null && workingDirectory.isNotBlank() -> workingDirectory
             shellConfig?.workingDirectory != null -> shellConfig.workingDirectory
             else -> defaultWorkingDirectory
         }
         
-        // 4. 确定实际终端尺寸：请求参数 > shell配置 > 默认值
+        // 4. Determine actual terminal size: request parameter > shell config > default value
         val actualTerminalSize = when {
             terminalSize != null -> terminalSize
             shellConfig?.size != null -> shellConfig.size
             else -> defaultTerminalSize
         }
         
-        // 5. 创建终端会话
+        // 5. Create terminal session
         return TerminalSession(
             id = UUID.randomUUID().toString(),
             userId = userId,
