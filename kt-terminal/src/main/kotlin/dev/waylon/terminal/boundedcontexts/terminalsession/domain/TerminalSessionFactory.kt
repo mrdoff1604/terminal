@@ -17,7 +17,7 @@ class TerminalSessionFactory(
     private val defaultWorkingDirectory = terminalConfig.defaultWorkingDirectory
     private val defaultTerminalSize = terminalConfig.defaultTerminalSize
     private val sessionTimeoutMs = terminalConfig.sessionTimeoutMs
-    
+
     /**
      * Create Terminal Session
      * @param userId User ID
@@ -35,27 +35,27 @@ class TerminalSessionFactory(
         terminalSize: TerminalSize?
     ): TerminalSession {
         val now = System.currentTimeMillis()
-        
+
         // 1. Determine actual shell type: request parameter > default value
         val actualShellType = shellType ?: defaultShellType
-        
+
         // 2. Get shell configuration
         val shellConfig = terminalConfig.shells[actualShellType]
-        
+
         // 3. Determine actual working directory: request parameter > shell config > default value
         val actualWorkingDirectory = when {
             workingDirectory != null && workingDirectory.isNotBlank() -> workingDirectory
             shellConfig?.workingDirectory != null -> shellConfig.workingDirectory
             else -> defaultWorkingDirectory
         }
-        
+
         // 4. Determine actual terminal size: request parameter > shell config > default value
         val actualTerminalSize = when {
             terminalSize != null -> terminalSize
             shellConfig?.size != null -> shellConfig.size
             else -> defaultTerminalSize
         }
-        
+
         // 5. Create terminal session
         return TerminalSession(
             id = UUID.randomUUID().toString(),

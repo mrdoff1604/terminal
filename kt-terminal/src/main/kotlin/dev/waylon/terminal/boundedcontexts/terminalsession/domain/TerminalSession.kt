@@ -45,7 +45,7 @@ data class TerminalSession(
         this.updatedAt = now
         return this
     }
-    
+
     /**
      * Calculates and updates the session's expiry time based on the given timeout.
      * 
@@ -58,7 +58,7 @@ data class TerminalSession(
         this.updatedAt = now
         return this
     }
-    
+
     /**
      * Resizes the terminal to the specified dimensions.
      * 
@@ -71,7 +71,7 @@ data class TerminalSession(
         this.updatedAt = System.currentTimeMillis()
         return this
     }
-    
+
     /**
      * Terminates the session, updating its status and timestamp.
      * 
@@ -82,7 +82,7 @@ data class TerminalSession(
         this.updatedAt = System.currentTimeMillis()
         return this
     }
-    
+
     /**
      * Checks if the session has expired based on its expiry time.
      * 
@@ -92,7 +92,7 @@ data class TerminalSession(
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean {
         return this.expiredAt?.let { it < now } ?: false
     }
-    
+
     /**
      * Updates the session's status and timestamp.
      * 
@@ -116,6 +116,7 @@ data class TerminalSession(
 enum class TerminalSessionStatus {
     /** Session is active and ready for use */
     ACTIVE,
+
     /** Session has been terminated */
     TERMINATED
 }

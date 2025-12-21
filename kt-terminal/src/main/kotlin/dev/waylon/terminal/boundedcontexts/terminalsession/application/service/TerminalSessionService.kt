@@ -47,7 +47,7 @@ class TerminalSessionService(
             shellType = shellType,
             terminalSize = size
         )
-        
+
         log.debug("TerminalSession created. {}", session)
         terminalSessionRepository.save(session)
 
@@ -91,11 +91,11 @@ class TerminalSessionService(
      */
     fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
         val terminalSize = TerminalSize(columns, rows)
-        
+
         // 1. First update PTY process size
         val resizeSuccess = terminalProcessManager.resizeProcess(id, terminalSize)
         log.debug("Resize PTY process result for session {}: {}", id, resizeSuccess)
-        
+
         // 2. Then update session object in storage
         return terminalSessionRepository.getById(id)?.also {
             it.resize(columns, rows)

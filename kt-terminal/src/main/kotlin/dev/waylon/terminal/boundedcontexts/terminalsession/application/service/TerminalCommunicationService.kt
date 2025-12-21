@@ -55,7 +55,7 @@ class TerminalCommunicationService(
             }
         }
 
-        val writePtyJob = scope.launch {
+        scope.launch {
             for (command in wsToPty) {
                 withContext(Dispatchers.IO) {
                     terminalProcess.write(command)
@@ -77,7 +77,7 @@ class TerminalCommunicationService(
             }
         }
 
-        val writeWsJob = scope.launch {
+        scope.launch {
             for (output in ptyToWs) {
                 protocol.send(output)
             }

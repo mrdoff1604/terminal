@@ -19,11 +19,11 @@ class GetAllTerminalSessionsUseCase(
      */
     fun execute(): List<TerminalSession> {
         log.debug("Executing GetAllTerminalSessionsUseCase")
-        
+
         val sessions = terminalSessionService.getAllSessions()
-        
+
         log.debug("Found {} terminal sessions", sessions.size)
-        
+
         return sessions
     }
 }

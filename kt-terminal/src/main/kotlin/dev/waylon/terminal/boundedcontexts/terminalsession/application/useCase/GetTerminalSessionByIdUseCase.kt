@@ -20,15 +20,15 @@ class GetTerminalSessionByIdUseCase(
      */
     fun execute(sessionId: String): TerminalSession? {
         log.debug("Executing GetTerminalSessionByIdUseCase for sessionId: {}", sessionId)
-        
+
         val session = terminalSessionService.getSessionById(sessionId)
-        
+
         if (session != null) {
             log.debug("Found session: {}, status: {}", sessionId, session.status)
         } else {
             log.debug("Session not found: {}", sessionId)
         }
-        
+
         return session
     }
 }

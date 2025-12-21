@@ -20,15 +20,15 @@ class TerminateTerminalSessionUseCase(
      */
     fun execute(sessionId: String): TerminalSession? {
         log.debug("Executing TerminateTerminalSessionUseCase for sessionId: {}", sessionId)
-        
+
         val session = terminalSessionService.terminateSession(sessionId)
-        
+
         if (session != null) {
             log.info("Terminated terminal session: {}", sessionId)
         } else {
             log.debug("Failed to terminate terminal session: {}", sessionId)
         }
-        
+
         return session
     }
 }

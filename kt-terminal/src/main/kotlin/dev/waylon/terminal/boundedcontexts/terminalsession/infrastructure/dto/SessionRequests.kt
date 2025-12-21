@@ -12,27 +12,27 @@ data class CreateSessionRequest(
      * User ID, required field
      */
     val userId: String,
-    
+
     /**
      * Session title, optional field
      */
     val title: String? = null,
-    
+
     /**
      * Working directory, optional field
      */
     val workingDirectory: String? = null,
-    
+
     /**
      * Shell type, optional field
      */
     val shellType: String? = null,
-    
+
     /**
      * Terminal columns, optional field
      */
     val columns: Int? = null,
-    
+
     /**
      * Terminal rows, optional field
      */
@@ -49,7 +49,7 @@ data class ResizeTerminalRequest(
      * Terminal columns, required field
      */
     val columns: Int,
-    
+
     /**
      * Terminal rows, required field
      */

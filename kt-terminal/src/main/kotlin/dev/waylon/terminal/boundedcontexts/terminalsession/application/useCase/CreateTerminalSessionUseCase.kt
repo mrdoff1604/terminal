@@ -60,21 +60,21 @@ class CreateTerminalSessionUseCase(
     private fun validateCreateSessionRequest(request: CreateSessionRequest) {
         // Validate userId is not blank
         require(request.userId.isNotBlank()) { "userId cannot be blank" }
-        
+
         // Validate terminal size (if provided) must be positive numbers
         if (request.columns != null) {
             require(request.columns > 0) { "columns must be greater than 0" }
         }
-        
+
         if (request.rows != null) {
             require(request.rows > 0) { "rows must be greater than 0" }
         }
-        
+
         // Validate working directory (if provided) cannot be blank
         if (request.workingDirectory != null) {
             require(request.workingDirectory.isNotBlank()) { "workingDirectory cannot be blank" }
         }
-        
+
         // Validate shell type (if provided) cannot be blank
         if (request.shellType != null) {
             require(request.shellType.isNotBlank()) { "shellType cannot be blank" }
