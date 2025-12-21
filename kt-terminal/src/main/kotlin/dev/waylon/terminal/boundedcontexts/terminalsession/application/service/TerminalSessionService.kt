@@ -6,9 +6,12 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessio
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
+import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionAlreadyTerminatedException
+import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionNotFoundException
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.TerminalConfig
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import org.slf4j.LoggerFactory
 
 /**
@@ -59,29 +62,32 @@ class TerminalSessionService(
     /**
      * Get terminal session by ID asynchronously
      * @param id Session ID
-     * @return Terminal session, or null if not found
+     * @return Terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun getSessionById(id: String): TerminalSession? {
-        return terminalSessionRepository.getById(id)?.also {
-            updateSessionActivity(it)
-        }
+    suspend fun getSessionById(id: String): TerminalSession {
+        return terminalSessionRepository.getById(id)?.apply {
+            updateSessionActivity(this)
+        } ?: throw TerminalSessionNotFoundException(id)
     }
 
     /**
      * Get terminal sessions by user ID asynchronously
      * @param userId User ID
-     * @return Flow of terminal sessions
+     * @return Flow of active (not expired) terminal sessions
      */
     fun getSessionsByUserId(userId: String): Flow<TerminalSession> {
         return terminalSessionRepository.getByUserId(userId)
+            .filter { !it.isExpired() }
     }
 
     /**
      * Get all terminal sessions asynchronously
-     * @return Flow of all terminal sessions
+     * @return Flow of active (not expired) terminal sessions
      */
     fun getAllSessions(): Flow<TerminalSession> {
         return terminalSessionRepository.getAll()
+            .filter { !it.isExpired() }
     }
 
     /**
@@ -89,50 +95,54 @@ class TerminalSessionService(
      * @param id Session ID
      * @param columns Number of columns
      * @param rows Number of rows
-     * @return Resized terminal session, or null if not found
+     * @return Resized terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
+    suspend fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession {
         val terminalSize = TerminalSize(columns, rows)
 
         // 1. First update PTY process size
-        val resizeSuccess = terminalProcessManager.resizeProcess(id, terminalSize)
-        log.debug("Resize PTY process result for session {}: {}", id, resizeSuccess)
+        terminalProcessManager.resizeProcess(id, terminalSize).also {
+            log.debug("Resize PTY process result for session {}: {}", id, it)
+        }
 
         // 2. Then update session object in storage
-        return terminalSessionRepository.getById(id)?.also {
-            it.resize(columns, rows)
-            terminalSessionRepository.update(it)
-        }
+        return terminalSessionRepository.getById(id)?.apply {
+            resize(columns, rows)
+            terminalSessionRepository.update(this)
+        } ?: throw TerminalSessionNotFoundException(id)
     }
 
     /**
      * Terminate terminal session asynchronously
      * @param id Session ID
      * @param reason Termination reason
-     * @return Terminated terminal session, or null if not found
+     * @return Terminated terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun terminateSession(id: String, reason: String? = null): TerminalSession? {
-        return terminalSessionRepository.getById(id)?.also {
+    suspend fun terminateSession(id: String, reason: String? = null): TerminalSession {
+        return terminalSessionRepository.getById(id)?.apply {
             // Use domain model's terminate method
-            it.terminate()
-
+            terminate()
+        }?.also {
             // Remove from storage
             terminalSessionRepository.deleteById(id)
-        }
+        } ?: throw TerminalSessionNotFoundException(id)
     }
 
     /**
      * Update terminal session status asynchronously
      * @param id Session ID
      * @param status New status
-     * @return Updated terminal session, or null if not found
+     * @return Updated terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession? {
-        return terminalSessionRepository.getById(id)?.also {
+    suspend fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession {
+        return terminalSessionRepository.getById(id)?.apply {
             // Use domain model's updateStatus method
-            it.updateStatus(status)
-            terminalSessionRepository.update(it)
-        }
+            updateStatus(status)
+            terminalSessionRepository.update(this)
+        } ?: throw TerminalSessionNotFoundException(id)
     }
 
     /**

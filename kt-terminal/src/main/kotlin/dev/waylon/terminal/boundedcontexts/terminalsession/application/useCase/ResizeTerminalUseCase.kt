@@ -11,17 +11,19 @@ import org.slf4j.LoggerFactory
  */
 class ResizeTerminalUseCase(
     private val terminalSessionService: TerminalSessionService
-) {
+) : UseCase<ResizeTerminalInput, TerminalSession> {
     private val log = LoggerFactory.getLogger(ResizeTerminalUseCase::class.java)
 
     /**
      * Execute resize terminal operation
-     * @param sessionId Session ID
-     * @param request Resize terminal request object
-     * @return Resized terminal session, or null if not found
+     * @param input Resize terminal input data
+     * @return Resized terminal session
      * @throws IllegalArgumentException If request parameters are invalid
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun execute(sessionId: String, request: ResizeTerminalRequest): TerminalSession? {
+    override suspend operator fun invoke(input: ResizeTerminalInput): TerminalSession {
+        val sessionId = input.sessionId
+        val request = input.request
         log.debug("Executing ResizeTerminalUseCase for sessionId: {}, request: {}", sessionId, request)
 
         // Validate request parameters

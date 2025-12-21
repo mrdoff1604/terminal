@@ -10,15 +10,16 @@ import org.slf4j.LoggerFactory
  */
 class TerminateTerminalSessionUseCase(
     private val terminalSessionService: TerminalSessionService
-) {
+) : UseCase<String, TerminalSession> {
     private val log = LoggerFactory.getLogger(TerminateTerminalSessionUseCase::class.java)
 
     /**
      * Execute the operation to terminate a terminal session
      * @param sessionId The session ID
-     * @return The terminated terminal session, or null if it doesn't exist
+     * @return The terminated terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun execute(sessionId: String): TerminalSession? {
+    override suspend operator fun invoke(sessionId: String): TerminalSession {
         log.debug("Executing TerminateTerminalSessionUseCase for sessionId: {}", sessionId)
 
         val session = terminalSessionService.terminateSession(sessionId)

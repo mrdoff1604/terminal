@@ -11,20 +11,15 @@ import org.slf4j.LoggerFactory
  */
 class GetAllTerminalSessionsUseCase(
     private val terminalSessionService: TerminalSessionService
-) {
+) : NoInputUseCase<Flow<TerminalSession>> {
     private val log = LoggerFactory.getLogger(GetAllTerminalSessionsUseCase::class.java)
 
     /**
      * Execute the operation to get all terminal sessions
      * @return Flow of all terminal sessions
      */
-    fun execute(): Flow<TerminalSession> {
+    override suspend operator fun invoke(): Flow<TerminalSession> {
         log.debug("Executing GetAllTerminalSessionsUseCase")
-
-        val sessions = terminalSessionService.getAllSessions()
-
-        log.debug("Found terminal sessions")
-
-        return sessions
+        return terminalSessionService.getAllSessions()
     }
 }

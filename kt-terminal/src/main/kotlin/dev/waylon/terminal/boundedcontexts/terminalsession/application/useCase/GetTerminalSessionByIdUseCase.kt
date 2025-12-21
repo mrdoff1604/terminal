@@ -10,25 +10,23 @@ import org.slf4j.LoggerFactory
  */
 class GetTerminalSessionByIdUseCase(
     private val terminalSessionService: TerminalSessionService
-) {
+) : UseCase<String, TerminalSession> {
     private val log = LoggerFactory.getLogger(GetTerminalSessionByIdUseCase::class.java)
 
     /**
      * Execute the operation to get a terminal session by ID
      * @param sessionId The session ID
-     * @return The terminal session, or null if it doesn't exist
+     * @return The terminal session
+     * @throws TerminalSessionNotFoundException If session not found
      */
-    suspend fun execute(sessionId: String): TerminalSession? {
+    override suspend operator fun invoke(sessionId: String): TerminalSession {
         log.debug("Executing GetTerminalSessionByIdUseCase for sessionId: {}", sessionId)
-
-        val session = terminalSessionService.getSessionById(sessionId)
-
-        if (session != null) {
-            log.debug("Found session: {}, status: {}", sessionId, session.status)
-        } else {
-            log.debug("Session not found: {}", sessionId)
+        return terminalSessionService.getSessionById(sessionId).also {
+            if (it != null) {
+                log.debug("Found session: {}, status: {}", sessionId, it.status)
+            } else {
+                log.debug("Session not found: {}", sessionId)
+            }
         }
-
-        return session
     }
 }

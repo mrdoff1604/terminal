@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
  */
 class CreateTerminalSessionUseCase(
     private val terminalSessionService: TerminalSessionService
-) {
+) : UseCase<CreateSessionRequest, TerminalSession> {
     private val log = LoggerFactory.getLogger(CreateTerminalSessionUseCase::class.java)
 
     /**
@@ -21,7 +21,7 @@ class CreateTerminalSessionUseCase(
      * @return Created terminal session
      * @throws IllegalArgumentException If request parameters are invalid
      */
-    suspend fun execute(request: CreateSessionRequest): TerminalSession {
+    override suspend operator fun invoke(request: CreateSessionRequest): TerminalSession {
         log.debug("Executing CreateTerminalSessionUseCase")
         log.debug("Session creation request: $request")
 

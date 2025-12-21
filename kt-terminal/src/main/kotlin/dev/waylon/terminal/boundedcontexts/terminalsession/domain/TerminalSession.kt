@@ -43,10 +43,9 @@ data class TerminalSession(
      * @param now Current instant (defaults to now)
      * @return This session instance for method chaining
      */
-    fun updateActivity(now: Instant = Clock.System.now()): TerminalSession {
-        this.lastActiveTime = now
-        this.updatedAt = now
-        return this
+    fun updateActivity(now: Instant = Clock.System.now()) = apply {
+        lastActiveTime = now
+        updatedAt = now
     }
 
     /**
@@ -56,10 +55,9 @@ data class TerminalSession(
      * @param now Current instant (defaults to now)
      * @return This session instance for method chaining
      */
-    fun updateExpiryTime(timeoutMs: Long, now: Instant = Clock.System.now()): TerminalSession {
-        this.expiredAt = now + timeoutMs.milliseconds
-        this.updatedAt = now
-        return this
+    fun updateExpiryTime(timeoutMs: Long, now: Instant = Clock.System.now()) = apply {
+        expiredAt = now + timeoutMs.milliseconds
+        updatedAt = now
     }
 
     /**
@@ -69,10 +67,9 @@ data class TerminalSession(
      * @param rows New number of rows
      * @return This session instance for method chaining
      */
-    fun resize(columns: Int, rows: Int): TerminalSession {
-        this.terminalSize = TerminalSize(columns, rows)
-        this.updatedAt = Clock.System.now()
-        return this
+    fun resize(columns: Int, rows: Int) = apply {
+        terminalSize = TerminalSize(columns, rows)
+        updatedAt = Clock.System.now()
     }
 
     /**
@@ -80,10 +77,9 @@ data class TerminalSession(
      * 
      * @return This session instance for method chaining
      */
-    fun terminate(): TerminalSession {
-        this.status = TerminalSessionStatus.TERMINATED
-        this.updatedAt = Clock.System.now()
-        return this
+    fun terminate() = apply {
+        status = TerminalSessionStatus.TERMINATED
+        updatedAt = Clock.System.now()
     }
 
     /**
@@ -92,9 +88,7 @@ data class TerminalSession(
      * @param now Current instant (defaults to now)
      * @return True if session has expired, false otherwise
      */
-    fun isExpired(now: Instant = Clock.System.now()): Boolean {
-        return this.expiredAt?.let { it < now } ?: false
-    }
+    fun isExpired(now: Instant = Clock.System.now()) = expiredAt?.let { it < now } ?: false
 
     /**
      * Updates the session's status and timestamp.
@@ -102,10 +96,9 @@ data class TerminalSession(
      * @param newStatus New status for the session
      * @return This session instance for method chaining
      */
-    fun updateStatus(newStatus: TerminalSessionStatus): TerminalSession {
-        this.status = newStatus
-        this.updatedAt = Clock.System.now()
-        return this
+    fun updateStatus(newStatus: TerminalSessionStatus) = apply {
+        status = newStatus
+        updatedAt = Clock.System.now()
     }
 }
 
