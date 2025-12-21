@@ -278,3 +278,47 @@ export const checkSessionActive = async (sessionId: string, _userId?: string): P
     return false;
   }
 };
+
+/**
+ * Download file from terminal session
+ */
+export const downloadFile = async (sessionId: string, filePath: string): Promise<void> => {
+  try {
+    const url = `${API_BASE_URL}/${sessionId}/download?filePath=${encodeURIComponent(filePath)}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.statusText}`);
+    }
+    
+    // Extract filename from Content-Disposition header or use basename
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = filePath.split('/').pop() || filePath.split('\\').pop() || 'download';
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    // Convert response to blob and download
+    const blob = await response.blob();
+    const urlBlob = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = urlBlob;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+    }, 100);
+  } catch (error) {
+    console.error('❌ Failed to download file:', error);
+    throw error;
+  }
+};

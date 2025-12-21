@@ -5,12 +5,12 @@ param(
     [int]$CheckInterval = 1000
 )
 
-Write-Host "监控文件: $FilePath"
-Write-Host "检查间隔: $CheckInterval ms"
-Write-Host "按 Ctrl+C 停止监控..."
+Write-Host "Monitoring file: $FilePath"
+Write-Host "Check interval: $CheckInterval ms"
+Write-Host "Press Ctrl+C to stop monitoring..."
 Write-Host ""
 
-# 初始化上一次文件大小
+# Initialize last file size
 $lastSize = 0
 
 while ($true) {
@@ -19,21 +19,21 @@ while ($true) {
             $fileInfo = Get-Item -Path $FilePath
             $currentSize = $fileInfo.Length
             
-            # 只有当文件大小大于0且与上次不同时才复制
+            # Only copy when file size is greater than 0 and different from last time
             if ($currentSize -gt 0 -and $currentSize -ne $lastSize) {
-                Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] 文件有新内容，复制到剪贴板..."
+                Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] File has new content, copying to clipboard..."
                 $content = Get-Content -Path $FilePath -Raw
                 Set-Clipboard -Value $content
-                Write-Host "内容已复制到剪贴板"
+                Write-Host "Content copied to clipboard"
                 $lastSize = $currentSize
             }
         } else {
-            Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] 文件不存在: $FilePath"
+            Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] File not found: $FilePath"
         }
     } catch {
-        Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] 错误: $($_.Exception.Message)"
+        Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Error: $($_.Exception.Message)"
     }
     
-    # 等待指定间隔
+    # Wait for the specified interval
     Start-Sleep -Milliseconds $CheckInterval
 }

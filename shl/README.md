@@ -1,187 +1,189 @@
-# 文件监控到剪贴板脚本
+# File Monitor to Clipboard Script
 
-一个PowerShell脚本，用于监控指定文件并在文件有内容时自动将内容复制到剪贴板。
+A PowerShell script that monitors a specified file and automatically copies its content to the clipboard when changes occur.
 
-## 功能
+## Features
 
-- 监控指定文件的变化
-- 当文件有内容且内容发生变化时，自动将内容复制到剪贴板
-- 显示详细的操作日志（带时间戳）
-- 支持自定义检查间隔
-- 错误处理机制
-- 按 Ctrl+C 可停止监控
+- Monitors changes to a specified file
+- Automatically copies file content to clipboard when it changes and has content
+- Displays detailed operation logs with timestamps
+- Supports custom check intervals
+- Error handling mechanism
+- Press Ctrl+C to stop monitoring
 
-## 用法
+## Usage
 
-### 基本语法
+### Basic Syntax
 
 ```powershell
 monitor-file-to-clipboard.ps1 -FilePath "D:\path\to\your\file.txt" [-CheckInterval 1000]
 ```
 
-### 参数说明
+### Parameter Description
 
-| 参数名 | 类型 | 必需 | 描述 | 默认值 |
-|--------|------|------|------|--------|
-| `-FilePath` | string | 是 | 要监控的文件路径 | - |
-| `-CheckInterval` | int | 否 | 检查文件变化的间隔时间（毫秒） | 1000 |
+| Parameter Name | Type | Required | Description | Default Value |
+|----------------|------|----------|-------------|---------------|
+| `-FilePath` | string | Yes | Path to the file to monitor | - |
+| `-CheckInterval` | int | No | Interval for checking file changes (milliseconds) | 1000 |
 
-### 使用示例
+### Usage Examples
 
-#### 示例 1：基本使用
-
-```powershell
-.monitor-file-to-clipboard.ps1 -FilePath "D:\test\output.txt"
-```
-
-- 监控 `D:\test\output.txt` 文件
-- 默认每秒检查一次文件变化
-
-#### 示例 2：自定义检查间隔
+#### Example 1: Basic Usage
 
 ```powershell
-.monitor-file-to-clipboard.ps1 -FilePath "D:\test\output.txt" -CheckInterval 500
+.\monitor-file-to-clipboard.ps1 -FilePath "D:\test\output.txt"
 ```
 
-- 监控 `D:\test\output.txt` 文件
-- 每500毫秒（0.5秒）检查一次文件变化
+- Monitors `D:\test\output.txt` file
+- Checks for changes every second by default
 
-#### 示例 3：使用相对路径
+#### Example 2: Custom Check Interval
 
 ```powershell
-.monitor-file-to-clipboard.ps1 -FilePath ".\logs\app.log" -CheckInterval 2000
+.\monitor-file-to-clipboard.ps1 -FilePath "D:\test\output.txt" -CheckInterval 500
 ```
 
-- 监控当前目录下 `logs\app.log` 文件
-- 每2秒检查一次文件变化
+- Monitors `D:\test\output.txt` file
+- Checks for changes every 500 milliseconds (0.5 seconds)
 
-## 输出示例
-
-```
-监控文件: .\test-monitor.txt
-检查间隔: 500 ms
-按 Ctrl+C 停止监控...
-
-[2025-12-20 15:00:09] 文件有新内容，复制到剪贴板...
-内容已复制到剪贴板
-[2025-12-20 15:00:15] 文件有新内容，复制到剪贴板...
-内容已复制到剪贴板
-```
-
-## 注意事项
-
-1. **执行权限**：确保PowerShell允许执行脚本。如果遇到执行权限问题，可以使用以下命令临时绕过执行策略：
-   ```powershell
-   powershell.exe -ExecutionPolicy Bypass -File .\monitor-file-to-clipboard.ps1 -FilePath "your-file-path"
-   ```
-
-2. **文件路径**：
-   - 支持绝对路径和相对路径
-   - 路径中包含空格时需要使用引号包围
-
-3. **停止脚本**：
-   - 按 `Ctrl+C` 可以停止脚本运行
-   - 脚本会立即停止，不会影响系统剪贴板
-
-4. **文件大小**：
-   - 只有文件大小大于0时才会复制内容
-   - 只有文件大小发生变化时才会复制内容（避免重复复制）
-
-5. **错误处理**：
-   - 脚本会捕获并显示错误信息
-   - 文件不存在时会显示提示信息
-
-## 系统要求
-
-- Windows操作系统
-- PowerShell 5.1 或更高版本
-- .NET Framework 4.5 或更高版本（用于 `Set-Clipboard` 命令）
-
-## 应用场景
-
-1. **日志监控**：监控日志文件，实时获取最新日志内容
-2. **命令输出监控**：监控命令行工具的输出文件，实时获取结果
-3. **文本编辑器协作**：监控共享文本文件，实时获取他人的修改
-4. **自动化工作流**：配合其他工具，实现自动化数据传递
-5. **调试辅助**：监控调试输出文件，方便复制调试信息
-
-## 使用 Set-Content 测试脚本
-
-您可以使用 PowerShell 的 `Set-Content` 命令来创建或修改文件内容，以测试监控脚本的功能。
-
-### Set-Content 命令简介
-
-`Set-Content` 命令用于将内容写入文件，会覆盖现有文件内容。
-
-### 基本语法
+#### Example 3: Using Relative Path
 
 ```powershell
-Set-Content -Path <文件路径> -Value <内容> [-Encoding <编码>]
+.\monitor-file-to-clipboard.ps1 -FilePath ".\logs\app.log" -CheckInterval 2000
 ```
 
-### 与监控脚本结合使用示例
+- Monitors `logs\app.log` file in the current directory
+- Checks for changes every 2 seconds
 
-#### 示例 1：创建或覆盖文件内容
+## Output Example
+
+```
+Monitoring file: .\test-monitor.txt
+Check interval: 500 ms
+Press Ctrl+C to stop monitoring...
+
+[2025-12-20 15:00:09] File has new content, copying to clipboard...
+Content copied to clipboard
+[2025-12-20 15:00:15] File has new content, copying to clipboard...
+Content copied to clipboard
+```
+
+## Notes
+
+1. **Execution Permission**:
+   - Ensure PowerShell allows script execution
+   - If you encounter execution permission issues, use this command:
+     ```powershell
+     powershell.exe -ExecutionPolicy Bypass -File .\monitor-file-to-clipboard.ps1 -FilePath "your-file-path"
+     ```
+
+2. **File Path**:
+   - Both absolute and relative paths are supported
+   - Paths containing spaces need to be enclosed in quotes
+
+3. **Stopping the Script**:
+   - Press `Ctrl+C` to stop script execution
+   - The script stops immediately and doesn't affect the system clipboard
+
+4. **File Size**:
+   - Content is only copied when file size is greater than 0
+   - Content is only copied when file size changes (to avoid duplicate copies)
+
+5. **Error Handling**:
+   - The script catches and displays error messages
+   - Shows a message when the file doesn't exist
+
+## System Requirements
+
+- Windows operating system
+- PowerShell 5.1 or later
+- .NET Framework 4.5 or later (for `Set-Clipboard` command)
+
+## Application Scenarios
+
+1. **Log Monitoring**: Monitor log files to get the latest log content in real-time
+2. **Command Output Monitoring**: Monitor output files from command-line tools to get results in real-time
+3. **Text Editor Collaboration**: Monitor shared text files to get others' modifications in real-time
+4. **Automated Workflows**: Work with other tools to implement automated data transfer
+5. **Debugging Assistance**: Monitor debug output files to easily copy debug information
+
+## Testing the Script with Set-Content
+
+You can use PowerShell's `Set-Content` command to create or modify file content to test the monitoring script's functionality.
+
+### Introduction to Set-Content
+
+The `Set-Content` command is used to write content to a file, overwriting existing file content.
+
+### Basic Syntax
 
 ```powershell
-# 创建或覆盖文件内容，触发监控脚本复制到剪贴板
+Set-Content -Path <File-Path> -Value <Content> [-Encoding <Encoding>]
+```
+
+### Using Set-Content with the Monitoring Script
+
+#### Example 1: Create or Overwrite File Content
+
+```powershell
+# Create or overwrite file content, triggering the monitoring script to copy to clipboard
 Set-Content -Path "D:\test\output.txt" -Value "hello everyone"
 ```
 
-#### 示例 2：写入多行内容
+#### Example 2: Write Multi-line Content
 
 ```powershell
-# 写入多行内容到监控文件
+# Write multi-line content to the monitored file
 Set-Content -Path "D:\test\output.txt" -Value @(
-    "第一行内容",
-    "第二行内容",
-    "第三行内容"
+    "First line content",
+    "Second line content",
+    "Third line content"
 )
 ```
 
-#### 示例 3：使用变量写入内容
+#### Example 3: Write Content Using Variables
 
 ```powershell
-# 使用变量存储内容，然后写入文件
-$content = "这是通过变量写入的内容"
+# Store content in a variable and write to file
+$content = "This is content written via a variable"
 Set-Content -Path "D:\test\output.txt" -Value $content
 ```
 
-#### 示例 4：结合其他命令输出
+#### Example 4: Combine with Other Commands
 
 ```powershell
-# 将命令输出写入监控文件
+# Write the output of another command to the monitored file
 Get-Date | Set-Content -Path "D:\test\output.txt"
 ```
 
-### 注意事项
+### Notes
 
-- `Set-Content` 命令会**覆盖**现有文件内容
-- 如果文件不存在，`Set-Content` 会自动创建文件
-- 支持写入单行或多行内容
-- 可以结合管道操作符使用，处理其他命令的输出
+- The `Set-Content` command **overwrites** existing file content
+- If the file doesn't exist, `Set-Content` creates it automatically
+- Supports writing single-line or multi-line content
+- Can be used with the pipeline operator to process output from other commands
 
-通过使用 `Set-Content` 命令，您可以方便地测试监控脚本的功能，验证脚本是否能正确检测到文件变化并将内容复制到剪贴板。
+By using the `Set-Content` command, you can easily test the monitoring script's functionality, verifying whether it can correctly detect file changes and copy content to the clipboard.
 
-## 使用 Set-Content 写入 Java 代码
+## Writing Java Code with Set-Content
 
-您可以使用 PowerShell 的 `Set-Content` 命令来创建和写入 Java 代码文件。以下是几种常用的方法：
+You can use PowerShell's `Set-Content` command to create and write Java code files. Here are several commonly used methods:
 
-### 1. 写入单行 Java 代码
+### 1. Writing Single-line Java Code
 
-对于简单的单行 Java 代码，可以直接使用 `-Value` 参数写入：
+For simple single-line Java code, you can write directly using the `-Value` parameter:
 
 ```powershell
-# 写入单行 Java 代码
+# Write single-line Java code
 Set-Content -Path "Test.java" -Value "public class Test {}"
 ```
 
-### 2. 写入多行 Java 代码
+### 2. Writing Multi-line Java Code
 
-对于多行 Java 代码，可以使用数组来存储多行内容：
+For multi-line Java code, you can use an array to store multiple lines:
 
 ```powershell
-# 写入多行 Java 代码
+# Write multi-line Java code
 Set-Content -Path "Test.java" -Value @(
     "public class Test {",
     "    public static void main(String[] args) {",
@@ -191,12 +193,12 @@ Set-Content -Path "Test.java" -Value @(
 )
 ```
 
-### 3. 使用 Here-String 写入完整 Java 类
+### 3. Using Here-String to Write a Complete Java Class
 
-Here-String 是一种方便的方式来写入包含多行文本的内容，特别适合写入完整的 Java 类：
+Here-String is a convenient way to write content containing multiple lines, especially suitable for writing complete Java classes:
 
 ```powershell
-# 使用 Here-String 写入完整 Java 类
+# Use Here-String to write a complete Java class
 $javaCode = @"
 public class Test {
     public static void main(String[] args) {
@@ -208,10 +210,10 @@ public class Test {
 Set-Content -Path "Test.java" -Value $javaCode
 ```
 
-### 4. 写入带有包声明和导入语句的 Java 代码
+### 4. Writing Java Code with Package Declarations and Import Statements
 
 ```powershell
-# 写入带有包声明和导入语句的 Java 代码
+# Write Java code with package declarations and import statements
 $javaCode = @"
 package com.example;
 
@@ -234,19 +236,19 @@ public class Test {
 Set-Content -Path "Test.java" -Value $javaCode
 ```
 
-### 5. 使用编码参数确保正确的字符编码
+### 5. Using Encoding Parameters for Correct Character Encoding
 
-Java 文件通常使用 UTF-8 编码，您可以使用 `-Encoding` 参数指定：
+Java files typically use UTF-8 encoding, which you can specify using the `-Encoding` parameter:
 
 ```powershell
-# 使用 UTF-8 编码写入 Java 代码
+# Write Java code using UTF-8 encoding
 Set-Content -Path "Test.java" -Value $javaCode -Encoding UTF8
 ```
 
-### 6. 结合其他命令生成并写入 Java 代码
+### 6. Combining with Other Commands to Generate and Write Java Code
 
 ```powershell
-# 结合其他命令生成 Java 代码并写入文件
+# Combine with other commands to generate Java code and write to file
 $currentDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $javaCode = @"
 public class Test {
@@ -259,28 +261,28 @@ public class Test {
 Set-Content -Path "Test.java" -Value $javaCode
 ```
 
-### 7. 示例：创建一个完整的 Java 类文件
+### 7. Example: Creating a Complete Java Class File
 
 ```powershell
-# 创建一个完整的 Java 类文件
+# Create a complete Java class file
 $javaClass = @"
 /**
- * 测试类，用于演示 Set-Content 命令
+ * Test class, used to demonstrate Set-Content command
  * @author Generated by PowerShell
  */
 public class TestClass {
     
-    // 成员变量
+    // Member variables
     private String name;
     private int age;
     
-    // 构造方法
+    // Constructor
     public TestClass(String name, int age) {
         this.name = name;
         this.age = age;
     }
     
-    // getter 和 setter 方法
+    // getter and setter methods
     public String getName() {
         return name;
     }
@@ -297,16 +299,16 @@ public class TestClass {
         this.age = age;
     }
     
-    // toString 方法
+    // toString method
     @Override
     public String toString() {
         return "TestClass{" +
-                "name='" + name + '\'' +
+                "name='" + name + "'" +
                 ", age=" + age +
                 '}';
     }
     
-    // 主方法
+    // main method
     public static void main(String[] args) {
         TestClass test = new TestClass("Test", 25);
         System.out.println(test);
@@ -314,41 +316,41 @@ public class TestClass {
 }
 "@
 
-# 写入文件，使用 UTF-8 编码
+# Write to file using UTF-8 encoding
 Set-Content -Path "TestClass.java" -Value $javaClass -Encoding UTF8
 ```
 
-### 注意事项
+### Notes
 
-1. **文件名与类名匹配**：Java 文件名应该与公共类名完全匹配
-2. **文件扩展名**：Java 文件必须使用 `.java` 扩展名
-3. **编码**：建议使用 UTF-8 编码，特别是当代码中包含非 ASCII 字符时
-4. **特殊字符**：在字符串中使用引号时，需要使用转义字符 `\`
-5. **缩进**：保持良好的缩进，使代码更易读
-6. **包声明**：如果使用包声明，需要确保文件位于正确的目录结构中
+1. **Filename Matching Class Name**: The Java filename should exactly match the public class name
+2. **File Extension**: Java files must use the `.java` extension
+3. **Encoding**: It's recommended to use UTF-8 encoding, especially when the code contains non-ASCII characters
+4. **Special Characters**: Use escape characters `\` when using quotes in strings
+5. **Indentation**: Maintain good indentation to make the code more readable
+6. **Package Declarations**: If using package declarations, ensure the file is in the correct directory structure
 
-通过这些方法，您可以方便地使用 PowerShell 的 `Set-Content` 命令来创建和写入 Java 代码文件，结合监控脚本可以实时监控这些文件的变化。
+Using these methods, you can conveniently use PowerShell's `Set-Content` command to create and write Java code files, and combine with the monitoring script to monitor changes to these files in real-time.
 
-## 安装
+## Installation
 
-1. 下载 `monitor-file-to-clipboard.ps1` 脚本文件
-2. 将脚本文件保存到任意目录
-3. 按照上述用法运行脚本
+1. Download the `monitor-file-to-clipboard.ps1` script file
+2. Save the script file to any directory
+3. Run the script according to the usage instructions above
 
-## 许可证
+## License
 
-本脚本采用 MIT 许可证，您可以自由使用、修改和分发。
+This script is licensed under the MIT License. You can freely use, modify, and distribute it.
 
-## 作者
+## Author
 
-由 AI 助手创建
+Created by AI Assistant
 
-## 更新日志
+## Update Log
 
 ### v1.0 (2025-12-20)
-- 初始版本
-- 实现基本的文件监控功能
-- 支持自动复制内容到剪贴板
-- 显示详细的操作日志
-- 支持自定义检查间隔
-- 包含错误处理机制
+- Initial version
+- Implemented basic file monitoring functionality
+- Supports automatic copying of content to clipboard
+- Displays detailed operation logs
+- Supports custom check intervals
+- Includes error handling mechanism

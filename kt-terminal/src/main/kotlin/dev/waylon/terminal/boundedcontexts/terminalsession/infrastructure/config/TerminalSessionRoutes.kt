@@ -11,11 +11,13 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.Term
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.exception.TerminalSessionNotFoundException
 import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.dto.CreateSessionRequest
 import dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.dto.ResizeTerminalRequest
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.log
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -222,6 +224,54 @@ fun Application.configureTerminalSessionRoutes() {
                         call.respond(
                             HttpStatusCode.InternalServerError,
                             mapOf("error" to "Failed to terminate session")
+                        )
+                    }
+                }
+
+                // Download file from terminal session
+                get("/{id}/download") {
+                    val id = call.parameters["id"] ?: return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "Invalid session ID")
+                    )
+                    
+                    val filePath = call.request.queryParameters["filePath"] ?: return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "Missing file path parameter")
+                    )
+                    
+                    log.debug("Downloading file for session {}: {}", id, filePath)
+                    try {
+                        // Get the session to validate it exists
+                        val session = getTerminalSessionByIdUseCase(id)
+                        
+                        // Create a file object
+                        val file = java.io.File(filePath)
+                        if (!file.exists() || !file.isFile) {
+                            return@get call.respond(
+                                HttpStatusCode.NotFound,
+                                mapOf("error" to "File not found: $filePath")
+                            )
+                        }
+                        
+                        // Read file content
+                        val fileBytes = file.readBytes()
+                        
+                        // Set headers for download
+                        call.response.headers.append("Content-Disposition", "attachment; filename=${file.name}")
+                        call.response.headers.append("Content-Type", "application/octet-stream")
+                        call.response.headers.append("Content-Length", fileBytes.size.toString())
+                        
+                        // Send file content
+                        call.respondBytes(fileBytes, ContentType.Application.OctetStream, HttpStatusCode.OK)
+                    } catch (e: TerminalSessionNotFoundException) {
+                        log.error("Session not found: {}", e.message, e)
+                        call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
+                    } catch (e: Exception) {
+                        log.error("Error downloading file: {}", e.message, e)
+                        call.respond(
+                            HttpStatusCode.InternalServerError,
+                            mapOf("error" to "Failed to download file")
                         )
                     }
                 }
