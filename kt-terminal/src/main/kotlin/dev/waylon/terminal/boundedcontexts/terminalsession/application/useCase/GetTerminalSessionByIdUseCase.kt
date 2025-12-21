@@ -18,7 +18,7 @@ class GetTerminalSessionByIdUseCase(
      * @param sessionId The session ID
      * @return The terminal session, or null if it doesn't exist
      */
-    fun execute(sessionId: String): TerminalSession? {
+    suspend fun execute(sessionId: String): TerminalSession? {
         log.debug("Executing GetTerminalSessionByIdUseCase for sessionId: {}", sessionId)
 
         val session = terminalSessionService.getSessionById(sessionId)

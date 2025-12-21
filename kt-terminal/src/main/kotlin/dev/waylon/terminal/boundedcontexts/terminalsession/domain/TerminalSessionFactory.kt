@@ -2,6 +2,8 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.domain
 
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.TerminalConfig
 import java.util.UUID
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Terminal Session Factory
@@ -34,7 +36,7 @@ class TerminalSessionFactory(
         shellType: String?,
         terminalSize: TerminalSize?
     ): TerminalSession {
-        val now = System.currentTimeMillis()
+        val now = Clock.System.now()
 
         // 1. Determine actual shell type: request parameter > default value
         val actualShellType = shellType ?: defaultShellType
@@ -68,7 +70,7 @@ class TerminalSessionFactory(
             createdAt = now,
             updatedAt = now,
             lastActiveTime = now,
-            expiredAt = now + sessionTimeoutMs
+            expiredAt = now + sessionTimeoutMs.milliseconds
         )
     }
 }

@@ -2,6 +2,7 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.application.useCase
 
 import dev.waylon.terminal.boundedcontexts.terminalsession.application.service.TerminalSessionService
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
+import kotlinx.coroutines.flow.Flow
 import org.slf4j.LoggerFactory
 
 /**
@@ -15,14 +16,14 @@ class GetAllTerminalSessionsUseCase(
 
     /**
      * Execute the operation to get all terminal sessions
-     * @return List of all terminal sessions
+     * @return Flow of all terminal sessions
      */
-    fun execute(): List<TerminalSession> {
+    fun execute(): Flow<TerminalSession> {
         log.debug("Executing GetAllTerminalSessionsUseCase")
 
         val sessions = terminalSessionService.getAllSessions()
 
-        log.debug("Found {} terminal sessions", sessions.size)
+        log.debug("Found terminal sessions")
 
         return sessions
     }

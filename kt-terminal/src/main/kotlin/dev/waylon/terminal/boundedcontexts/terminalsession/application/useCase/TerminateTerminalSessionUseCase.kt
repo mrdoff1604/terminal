@@ -18,7 +18,7 @@ class TerminateTerminalSessionUseCase(
      * @param sessionId The session ID
      * @return The terminated terminal session, or null if it doesn't exist
      */
-    fun execute(sessionId: String): TerminalSession? {
+    suspend fun execute(sessionId: String): TerminalSession? {
         log.debug("Executing TerminateTerminalSessionUseCase for sessionId: {}", sessionId)
 
         val session = terminalSessionService.terminateSession(sessionId)

@@ -7,6 +7,8 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessio
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionStatus
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSize
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.model.TerminalConfig
+import kotlin.time.Clock
+import kotlinx.coroutines.flow.Flow
 import org.slf4j.LoggerFactory
 
 /**
@@ -24,7 +26,7 @@ class TerminalSessionService(
     private val log = LoggerFactory.getLogger(TerminalSessionService::class.java)
 
     /**
-     * Create terminal session
+     * Create terminal session asynchronously
      * @param userId User ID
      * @param title Session title
      * @param workingDirectory Working directory
@@ -32,7 +34,7 @@ class TerminalSessionService(
      * @param size Terminal size
      * @return Created terminal session
      */
-    fun createSession(
+    suspend fun createSession(
         userId: String,
         title: String?,
         shellType: String?,
@@ -55,41 +57,41 @@ class TerminalSessionService(
     }
 
     /**
-     * Get terminal session by ID
+     * Get terminal session by ID asynchronously
      * @param id Session ID
      * @return Terminal session, or null if not found
      */
-    fun getSessionById(id: String): TerminalSession? {
+    suspend fun getSessionById(id: String): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
             updateSessionActivity(it)
         }
     }
 
     /**
-     * Get terminal sessions by user ID
+     * Get terminal sessions by user ID asynchronously
      * @param userId User ID
-     * @return List of terminal sessions
+     * @return Flow of terminal sessions
      */
-    fun getSessionsByUserId(userId: String): List<TerminalSession> {
+    fun getSessionsByUserId(userId: String): Flow<TerminalSession> {
         return terminalSessionRepository.getByUserId(userId)
     }
 
     /**
-     * Get all terminal sessions
-     * @return List of all terminal sessions
+     * Get all terminal sessions asynchronously
+     * @return Flow of all terminal sessions
      */
-    fun getAllSessions(): List<TerminalSession> {
+    fun getAllSessions(): Flow<TerminalSession> {
         return terminalSessionRepository.getAll()
     }
 
     /**
-     * Resize terminal
+     * Resize terminal asynchronously
      * @param id Session ID
      * @param columns Number of columns
      * @param rows Number of rows
      * @return Resized terminal session, or null if not found
      */
-    fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
+    suspend fun resizeTerminal(id: String, columns: Int, rows: Int): TerminalSession? {
         val terminalSize = TerminalSize(columns, rows)
 
         // 1. First update PTY process size
@@ -104,12 +106,12 @@ class TerminalSessionService(
     }
 
     /**
-     * Terminate terminal session
+     * Terminate terminal session asynchronously
      * @param id Session ID
      * @param reason Termination reason
      * @return Terminated terminal session, or null if not found
      */
-    fun terminateSession(id: String, reason: String? = null): TerminalSession? {
+    suspend fun terminateSession(id: String, reason: String? = null): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
             // Use domain model's terminate method
             it.terminate()
@@ -120,12 +122,12 @@ class TerminalSessionService(
     }
 
     /**
-     * Update terminal session status
+     * Update terminal session status asynchronously
      * @param id Session ID
      * @param status New status
      * @return Updated terminal session, or null if not found
      */
-    fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession? {
+    suspend fun updateSessionStatus(id: String, status: TerminalSessionStatus): TerminalSession? {
         return terminalSessionRepository.getById(id)?.also {
             // Use domain model's updateStatus method
             it.updateStatus(status)
@@ -134,21 +136,21 @@ class TerminalSessionService(
     }
 
     /**
-     * Delete terminal session
+     * Delete terminal session asynchronously
      * @param id Session ID
      * @return Whether deletion was successful
      */
-    fun deleteSession(id: String): Boolean {
+    suspend fun deleteSession(id: String): Boolean {
         val session = terminalSessionRepository.deleteById(id)
         return session != null
     }
 
     /**
-     * Update session activity time
+     * Update session activity time asynchronously
      * @param session Terminal session
      */
-    private fun updateSessionActivity(session: TerminalSession) {
-        val now = System.currentTimeMillis()
+    private suspend fun updateSessionActivity(session: TerminalSession) {
+        val now = Clock.System.now()
 
         // Use domain model methods to update activity time and expiry time
         session.updateActivity(now)

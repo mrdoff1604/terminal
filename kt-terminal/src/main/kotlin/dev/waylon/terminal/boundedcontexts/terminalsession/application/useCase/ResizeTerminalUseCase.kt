@@ -21,7 +21,7 @@ class ResizeTerminalUseCase(
      * @return Resized terminal session, or null if not found
      * @throws IllegalArgumentException If request parameters are invalid
      */
-    fun execute(sessionId: String, request: ResizeTerminalRequest): TerminalSession? {
+    suspend fun execute(sessionId: String, request: ResizeTerminalRequest): TerminalSession? {
         log.debug("Executing ResizeTerminalUseCase for sessionId: {}, request: {}", sessionId, request)
 
         // Validate request parameters

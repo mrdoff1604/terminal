@@ -1,5 +1,7 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.domain
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Terminal Session Repository Interface
  * 
@@ -13,52 +15,52 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.domain
  */
 interface TerminalSessionRepository {
     /**
-     * Saves a terminal session to the repository.
+     * Saves a terminal session to the repository asynchronously.
      * 
      * @param session The terminal session to save
      */
-    fun save(session: TerminalSession)
+    suspend fun save(session: TerminalSession)
 
     /**
-     * Retrieves a terminal session by its ID.
+     * Retrieves a terminal session by its ID asynchronously.
      * 
      * @param id The unique identifier of the session to retrieve
      * @return The terminal session if found, null otherwise
      */
-    fun getById(id: String): TerminalSession?
+    suspend fun getById(id: String): TerminalSession?
 
     /**
-     * Retrieves all terminal sessions from the repository.
+     * Retrieves all terminal sessions from the repository asynchronously.
      * 
-     * @return A list of all terminal sessions
+     * @return A Flow of all terminal sessions
      */
-    fun getAll(): List<TerminalSession>
+    fun getAll(): Flow<TerminalSession>
 
     /**
-     * Retrieves all terminal sessions for a specific user.
+     * Retrieves all terminal sessions for a specific user asynchronously.
      * 
      * @param userId The unique identifier of the user
-     * @return A list of terminal sessions associated with the user
+     * @return A Flow of terminal sessions associated with the user
      */
-    fun getByUserId(userId: String): List<TerminalSession>
+    fun getByUserId(userId: String): Flow<TerminalSession>
 
     /**
-     * Updates an existing terminal session in the repository.
+     * Updates an existing terminal session in the repository asynchronously.
      * 
      * @param session The terminal session with updated information
      */
-    fun update(session: TerminalSession)
+    suspend fun update(session: TerminalSession)
 
     /**
-     * Deletes a terminal session by its ID.
+     * Deletes a terminal session by its ID asynchronously.
      * 
      * @param id The unique identifier of the session to delete
      * @return The deleted terminal session if found, null otherwise
      */
-    fun deleteById(id: String): TerminalSession?
+    suspend fun deleteById(id: String): TerminalSession?
 
     /**
-     * Deletes all terminal sessions from the repository.
+     * Deletes all terminal sessions from the repository asynchronously.
      */
-    fun deleteAll()
+    suspend fun deleteAll()
 }

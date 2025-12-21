@@ -16,12 +16,12 @@ class CreateTerminalSessionUseCase(
     private val log = LoggerFactory.getLogger(CreateTerminalSessionUseCase::class.java)
 
     /**
-     * Execute create terminal session operation
+     * Execute create terminal session operation asynchronously
      * @param request Create session request object
      * @return Created terminal session
      * @throws IllegalArgumentException If request parameters are invalid
      */
-    fun execute(request: CreateSessionRequest): TerminalSession {
+    suspend fun execute(request: CreateSessionRequest): TerminalSession {
         log.debug("Executing CreateTerminalSessionUseCase")
         log.debug("Session creation request: $request")
 
@@ -35,7 +35,7 @@ class CreateTerminalSessionUseCase(
             TerminalSize(80, 24) // Default size
         }
 
-        // Call service layer to create session
+        // Call service layer to create session asynchronously
         val session = terminalSessionService.createSession(
             userId = request.userId,
             title = request.title,

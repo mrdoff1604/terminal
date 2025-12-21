@@ -2,6 +2,7 @@ package dev.waylon.terminal.boundedcontexts.terminalsession.infrastructure.repos
 
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSession
 import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessionRepository
+import kotlinx.coroutines.flow.asFlow
 
 /**
  * In-memory implementation of TerminalSessionRepository
@@ -10,31 +11,31 @@ import dev.waylon.terminal.boundedcontexts.terminalsession.domain.TerminalSessio
 class InMemoryTerminalSessionRepository : TerminalSessionRepository {
     private val sessions = mutableMapOf<String, TerminalSession>()
 
-    override fun save(session: TerminalSession) {
+    override suspend fun save(session: TerminalSession) {
         sessions[session.id] = session
     }
 
-    override fun getById(id: String): TerminalSession? {
+    override suspend fun getById(id: String): TerminalSession? {
         return sessions[id]
     }
 
-    override fun getAll(): List<TerminalSession> {
-        return sessions.values.toList()
+    override fun getAll(): kotlinx.coroutines.flow.Flow<TerminalSession> {
+        return sessions.values.asFlow()
     }
 
-    override fun getByUserId(userId: String): List<TerminalSession> {
-        return sessions.values.filter { it.userId == userId }
+    override fun getByUserId(userId: String): kotlinx.coroutines.flow.Flow<TerminalSession> {
+        return sessions.values.filter { it.userId == userId }.asFlow()
     }
 
-    override fun update(session: TerminalSession) {
+    override suspend fun update(session: TerminalSession) {
         sessions[session.id] = session
     }
 
-    override fun deleteById(id: String): TerminalSession? {
+    override suspend fun deleteById(id: String): TerminalSession? {
         return sessions.remove(id)
     }
 
-    override fun deleteAll() {
+    override suspend fun deleteAll() {
         sessions.clear()
     }
 }

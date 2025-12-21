@@ -1,5 +1,8 @@
 package dev.waylon.terminal.boundedcontexts.terminalsession.domain
 
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 /**
@@ -29,18 +32,18 @@ data class TerminalSession(
     val shellType: String,
     var status: TerminalSessionStatus,
     var terminalSize: TerminalSize = TerminalSize(80, 24),
-    val createdAt: Long = System.currentTimeMillis(),
-    var updatedAt: Long = System.currentTimeMillis(),
-    var lastActiveTime: Long = System.currentTimeMillis(),
-    var expiredAt: Long?
+    val createdAt: Instant = Clock.System.now(),
+    var updatedAt: Instant = Clock.System.now(),
+    var lastActiveTime: Instant = Clock.System.now(),
+    var expiredAt: Instant? = null
 ) {
     /**
      * Updates the session's last activity time and update timestamp.
      * 
-     * @param now Current timestamp (defaults to now)
+     * @param now Current instant (defaults to now)
      * @return This session instance for method chaining
      */
-    fun updateActivity(now: Long = System.currentTimeMillis()): TerminalSession {
+    fun updateActivity(now: Instant = Clock.System.now()): TerminalSession {
         this.lastActiveTime = now
         this.updatedAt = now
         return this
@@ -50,11 +53,11 @@ data class TerminalSession(
      * Calculates and updates the session's expiry time based on the given timeout.
      * 
      * @param timeoutMs Timeout in milliseconds
-     * @param now Current timestamp (defaults to now)
+     * @param now Current instant (defaults to now)
      * @return This session instance for method chaining
      */
-    fun updateExpiryTime(timeoutMs: Long, now: Long = System.currentTimeMillis()): TerminalSession {
-        this.expiredAt = now + timeoutMs
+    fun updateExpiryTime(timeoutMs: Long, now: Instant = Clock.System.now()): TerminalSession {
+        this.expiredAt = now + timeoutMs.milliseconds
         this.updatedAt = now
         return this
     }
@@ -68,7 +71,7 @@ data class TerminalSession(
      */
     fun resize(columns: Int, rows: Int): TerminalSession {
         this.terminalSize = TerminalSize(columns, rows)
-        this.updatedAt = System.currentTimeMillis()
+        this.updatedAt = Clock.System.now()
         return this
     }
 
@@ -79,17 +82,17 @@ data class TerminalSession(
      */
     fun terminate(): TerminalSession {
         this.status = TerminalSessionStatus.TERMINATED
-        this.updatedAt = System.currentTimeMillis()
+        this.updatedAt = Clock.System.now()
         return this
     }
 
     /**
      * Checks if the session has expired based on its expiry time.
      * 
-     * @param now Current timestamp (defaults to now)
+     * @param now Current instant (defaults to now)
      * @return True if session has expired, false otherwise
      */
-    fun isExpired(now: Long = System.currentTimeMillis()): Boolean {
+    fun isExpired(now: Instant = Clock.System.now()): Boolean {
         return this.expiredAt?.let { it < now } ?: false
     }
 
@@ -101,7 +104,7 @@ data class TerminalSession(
      */
     fun updateStatus(newStatus: TerminalSessionStatus): TerminalSession {
         this.status = newStatus
-        this.updatedAt = System.currentTimeMillis()
+        this.updatedAt = Clock.System.now()
         return this
     }
 }
